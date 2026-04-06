@@ -1,0 +1,1067 @@
+.feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.message {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 80%;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  p {
+    margin: 0 0 4px 0;
+    word-wrap: break-word;
+  }
+
+  &:hover {
+    .messageActions {
+      opacity: 1;
+    }
+  }
+}
+
+.userMessage {
+  align-self: flex-start;
+  background-color: #f5f5f5;
+  color: #333;
+  border-bottom-right-radius: 4px;
+}
+
+.supportMessage {
+  align-self: flex-end;
+  background-color: #1976d2;
+  color: white;
+  border-bottom-left-radius: 4px;
+}
+
+// Стили для удаленных сообщений
+.deletedMessage {
+  opacity: 0.7;
+  background-color: #f9f9f9 !important;
+  border: 1px dashed #ddd !important;
+
+  &.userMessage {
+    background-color: #e3f2fd !important;
+    border-color: #bbdefb !important;
+    color: #777 !important;
+
+    .deletedContent {
+      color: #777 !important;
+    }
+  }
+
+  &.supportMessage {
+    background-color: #f5f5f5 !important;
+    border-color: #e0e0e0 !important;
+    color: #777 !important;
+
+    .deletedContent {
+      color: #777 !important;
+    }
+  }
+}
+
+.deletedContent {
+  font-style: italic;
+  color: #999;
+  margin: 0 0 4px 0;
+}
+
+.dateGroup {
+  margin-bottom: 16px;
+}
+
+.dateDivider {
+  text-align: center;
+  margin: 8px 0;
+
+  span {
+    background-color: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #777;
+  }
+}
+
+.messageActions {
+  position: absolute;
+  top: -20px;
+  right: 8px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    color: #333 !important;
+
+    &:hover {
+      background-color: #f0f0f0;
+    }
+  }
+}
+
+.replyIndicator {
+  background-color: #f0f0f0;
+  border-left: 3px solid #1976d2;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #777;
+
+  .replyAuthor {
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .replyText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.replyTarget {
+  background-color: rgba(25, 118, 210, 0.1) !important;
+  border: 1px solid #1976d2 !important;
+}
+
+.scrollToBottomBtn {
+  position: fixed;
+  bottom: 120px;
+  right: 30px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  opacity: 0.8;
+
+  &:hover {
+    background-color: #1565c0;
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.attachmentPreview {
+  position: relative;
+  display: inline-block;
+  margin: 4px 0;
+
+  .removeAttachment {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      background-color: #cc0000;
+    }
+  }
+
+  &:hover .removeAttachment {
+    opacity: 1;
+  }
+
+  img {
+    max-width: 200px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+}
+
+.attachmentPlaceholder {
+  padding: 8px;
+  background-color: #f5f5f5;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  margin: 4px 0;
+
+  p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #777;
+  }
+}
+
+.messageActions {
+  button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+}
+
+// НОВЫЕ СТИЛИ ДЛЯ ПАГИНАЦИИ
+.loadMoreContainer {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+}
+
+.loadMoreButton {
+  padding: 8px 16px;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+
+  &:hover:not(:disabled) {
+    background-color: #1565c0;
+  }
+
+  &:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+}
+
+.loadingIndicator {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  color: #777;
+}
+
+.noMoreMessages {
+  display: flex;
+  justify-content: center;
+  padding: 16px;
+  color: #999;
+  font-style: italic;
+}
+
+.feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.message {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 80%;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  p {
+    margin: 0 0 4px 0;
+    word-wrap: break-word;
+  }
+
+  &:hover {
+    .messageActions {
+      opacity: 1;
+    }
+  }
+}
+
+.userMessage {
+  align-self: flex-start;
+  background-color: #f5f5f5;
+  color: #333;
+  border-bottom-right-radius: 4px;
+}
+
+.supportMessage {
+  align-self: flex-end;
+  background-color: #1976d2;
+  color: white;
+  border-bottom-left-radius: 4px;
+}
+
+// Стили для удаленных сообщений
+.deletedMessage {
+  opacity: 0.7;
+  background-color: #f9f9f9 !important;
+  border: 1px dashed #ddd !important;
+
+  &.userMessage {
+    background-color: #e3f2fd !important;
+    border-color: #bbdefb !important;
+    color: #777 !important;
+
+    .deletedContent {
+      color: #777 !important;
+    }
+  }
+
+  &.supportMessage {
+    background-color: #f5f5f5 !important;
+    border-color: #e0e0e0 !important;
+    color: #777 !important;
+
+    .deletedContent {
+      color: #777 !important;
+    }
+  }
+}
+
+.deletedContent {
+  font-style: italic;
+  color: #999;
+  margin: 0 0 4px 0;
+}
+
+.dateGroup {
+  margin-bottom: 16px;
+}
+
+.dateDivider {
+  text-align: center;
+  margin: 8px 0;
+
+  span {
+    background-color: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #777;
+  }
+}
+
+.messageActions {
+  position: absolute;
+  top: -20px;
+  right: 8px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    color: #333 !important;
+
+    &:hover {
+      background-color: #f0f0f0;
+    }
+  }
+}
+
+.replyIndicator {
+  background-color: #f0f0f0;
+  border-left: 3px solid #1976d2;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #777;
+
+  .replyAuthor {
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .replyText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.replyTarget {
+  background-color: rgba(25, 118, 210, 0.1) !important;
+  border: 1px solid #1976d2 !important;
+}
+
+.scrollToBottomBtn {
+  position: fixed;
+  bottom: 120px;
+  right: 30px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  opacity: 0.8;
+
+  &:hover {
+    background-color: #1565c0;
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.attachmentPreview {
+  position: relative;
+  display: inline-block;
+  margin: 4px 0;
+
+  .removeAttachment {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      background-color: #cc0000;
+    }
+  }
+
+  &:hover .removeAttachment {
+    opacity: 1;
+  }
+
+  img {
+    max-width: 200px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+}
+
+.attachmentPlaceholder {
+  padding: 8px;
+  background-color: #f5f5f5;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  margin: 4px 0;
+
+  p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #777;
+  }
+}
+
+.messageActions {
+  button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+}
+
+.senderName {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+  opacity: 0.8;
+}
+
+.userMessage .senderName {
+  color: #504c4c;
+  text-align: left;
+}
+
+.supportMessage .senderName {
+  color: #504c4c;
+  text-align: right;
+}
+
+.loadingIndicator {
+  text-align: center;
+  padding: 16px;
+  color: #504c4c;
+
+  p {
+    margin: 0;
+    font-size: 0.9em;
+  }
+}
+
+.observerTarget {
+  height: 1px;
+  visibility: hidden;
+}
+
+.feed {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
+}
+
+.message {
+  margin-bottom: 8px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  max-width: 80%;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+
+  p {
+    margin: 0 0 4px 0;
+    word-wrap: break-word;
+  }
+
+  &:hover {
+    .messageActions {
+      opacity: 1;
+    }
+  }
+}
+
+.userMessage {
+  align-self: flex-start;
+  background-color: #f5f5f5;
+  color: #333;
+  border-bottom-right-radius: 4px;
+}
+
+.supportMessage {
+  align-self: flex-end;
+  background-color: #cfd0d1;
+  color: #333;
+  border-bottom-left-radius: 4px;
+}
+
+// Стили для удаленных сообщений
+.deletedMessage {
+  opacity: 0.7;
+  background-color: #f9f9f9 !important;
+  border: 1px dashed #ddd !important;
+
+  &.userMessage {
+    background-color: #e3f2fd !important;
+    border-color: #bbdefb !important;
+    color: #777 !important;
+
+    .deletedContent {
+      color: #777 !important;
+    }
+  }
+
+  &.supportMessage {
+    background-color: #f5f5f5 !important;
+    border-color: #e0e0e0 !important;
+    color: #777 !important;
+
+    .deletedContent {
+      color: #777 !important;
+    }
+  }
+}
+
+.deletedContent {
+  font-style: italic;
+  color: #999;
+  margin: 0 0 4px 0;
+}
+
+.dateGroup {
+  margin-bottom: 16px;
+}
+
+.dateDivider {
+  text-align: center;
+  margin: 8px 0;
+
+  span {
+    background-color: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    color: #777;
+  }
+}
+
+.messageActions {
+  position: absolute;
+  top: -20px;
+  right: 8px;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    color: #333 !important;
+
+    &:hover {
+      background-color: #f0f0f0;
+    }
+  }
+}
+
+.replyIndicator {
+  background-color: #f0f0f0;
+  border-left: 3px solid #1976d2;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #777;
+
+  .replyAuthor {
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+
+  .replyText {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+.replyTarget {
+  background-color: rgba(25, 118, 210, 0.1) !important;
+  border: 1px solid #1976d2 !important;
+}
+
+.scrollToBottomBtn {
+  position: fixed;
+  bottom: 120px;
+  right: 30px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  z-index: 1000;
+  opacity: 0.8;
+
+  &:hover {
+    background-color: #1565c0;
+    transform: scale(1.1);
+    opacity: 1;
+  }
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+.attachmentPreview {
+  position: relative;
+  display: inline-block;
+  margin: 4px 0;
+
+  .removeAttachment {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+
+    &:hover {
+      background-color: #cc0000;
+    }
+  }
+
+  &:hover .removeAttachment {
+    opacity: 1;
+  }
+
+  img {
+    max-width: 200px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+  }
+}
+
+.attachmentPlaceholder {
+  padding: 8px;
+  background-color: #f5f5f5;
+  border: 1px dashed #ddd;
+  border-radius: 4px;
+  margin: 4px 0;
+
+  p {
+    margin: 0;
+    font-size: 0.9em;
+    color: #777;
+  }
+}
+
+.messageActions {
+  button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+}
+
+// Новые стили для индикаторов загрузки
+.loadingIndicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  color: #777;
+  font-size: 0.9em;
+
+  .loadingSpinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #1976d2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-right: 8px;
+  }
+}
+
+.loadMoreIndicator {
+  text-align: center;
+  padding: 8px;
+  color: #999;
+  font-size: 0.8em;
+  font-style: italic;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.observerTarget {
+  height: 1px;
+  width: 100%;
+}
+
+.loadingIndicator {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+  color: #777;
+
+  .loadingSpinner {
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #1976d2;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 8px;
+  }
+
+  p {
+    margin: 0;
+    font-size: 0.9em;
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.noMoreMessages {
+  text-align: center;
+  padding: 16px;
+  color: #999;
+  font-style: italic;
+  border-top: 1px solid #eee;
+  margin-top: 16px;
+
+  p {
+    margin: 0;
+    font-size: 0.9em;
+  }
+}
+
+.statusIcons {
+  display: inline-flex;
+  align-items: center;
+
+  svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .delivered {
+    color: #1976d2 !important;
+  }
+
+  .sent {
+    color: rgba(0, 0, 0, 0.6) !important;
+  }
+
+  .read {
+    color: #1976d2 !important;
+  }
+}
+
+.unreadMessage {
+  background-color: rgba(25, 118, 210, 0.05) !important;
+  border-left: 3px solid #667A8A;
+}
+
+.scrollToBottomBtn {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: #667A8A;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  z-index: 1000;
+
+  &:hover {
+    background-color: #667A8A;
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.unreadCountBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 12px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 0 6px;
+  border: 2px solid white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+
+.unreadMessage {
+  background-color: rgba(25, 118, 210, 0.05) !important;
+  border-left: 3px solid #667A8A;
+}
+
+.scrollToBottomBtn {
+  position: absolute;
+  bottom: 70px;
+  right: 50px;
+  width: 50px;
+  height: 50px;
+  border-radius: 25px;
+  background-color: #667A8A;
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  z-index: 1000;
+
+  &:hover {
+    background-color: #667A8A;
+    transform: scale(1.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+}
+
+.unreadCountBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background-color: #f44336;
+  color: white;
+  border-radius: 12px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 0 6px;
+  border: 2px solid white;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.firstUnreadMessage {
+  border-left: 3px solid #ff9800 !important;
+  background-color: rgba(255, 152, 0, 0.05) !important;
+  animation: pulseUnread 2s ease-in-out;
+  
+  &::before {
+    content: 'Новое';
+    position: absolute;
+    left: -60px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ff9800;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: bold;
+    animation: fadeIn 0.5s ease-in-out;
+  }
+}
+
+@keyframes pulseUnread {
+  0%, 100% {
+    background-color: rgba(255, 152, 0, 0.05);
+  }
+  50% {
+    background-color: rgba(255, 152, 0, 0.1);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}

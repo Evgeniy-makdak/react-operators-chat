@@ -1,0 +1,281 @@
+.inputContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.replyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+  font-size: 0.9em;
+  
+  .replyInfo {
+    flex: 1;
+    
+    .replyAuthor {
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    
+    .replyText {
+      color: #777;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+  
+  .closeReply {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 2px;
+    
+    &:hover:not(:disabled) {
+      background-color: #e0e0e0;
+    }
+    
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+  }
+}
+
+.errorMessage {
+  padding: 8px;
+  background-color: #ffebee;
+  color: #c62828;
+  border-radius: 4px;
+  font-size: 0.9em;
+  border: 1px solid #ffcdd2;
+  
+  small {
+    opacity: 0.8;
+    font-size: 0.8em;
+  }
+}
+
+.inputRow {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  gap: 8px;
+}
+
+.textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px;
+  font-family: inherit;
+  
+  &:focus {
+    outline: none;
+    border: 1px solid #ddd;
+  }
+  
+  &:disabled {
+    background-color: #f5f5f5;
+    color: #999;
+  }
+  
+  // Добавляем стиль для placeholder когда можно отправить только с файлами
+  &::placeholder {
+    color: #999;
+  }
+}
+
+// Дополнительный стиль для сообщения о возможности отправки с файлами
+.fileOnlyHint {
+  font-size: 0.8em;
+  color: #777;
+  margin-top: 4px;
+}
+
+.fileButton {
+  padding: 8px;
+  cursor: pointer;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background-color: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  
+  &:hover:not(.disabled) {
+    background-color: #e0e0e0;
+  }
+  
+  &.disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+}
+
+.fileCounter {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background-color: #1976d2;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.submitBtn {
+  padding: 8px;
+  min-width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.endDialogBtn {
+  padding: 8px;
+  min-width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+}
+
+.textareaBlocked {
+  background-color: #f5f5f5 !important;
+  border-color: #e0e0e0 !important;
+  color: #9e9e9e !important;
+  cursor: not-allowed !important;
+  
+  &::placeholder {
+    color: #bdbdbd !important;
+  }
+}
+
+.fileButtonBlocked {
+  background-color: #f5f5f5 !important;
+  border-color: #e0e0e0 !important;
+  color: #9e9e9e !important;
+  cursor: not-allowed !important;
+  
+  &:hover {
+    background-color: #f5f5f5 !important;
+    border-color: #e0e0e0 !important;
+  }
+}
+
+.attachmentItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 8px;
+  margin: 4px 0;
+  background-color: #f5f5f5;
+  border-radius: 4px;
+  border: 1px solid #e0e0e0;
+  
+  &:hover {
+    background-color: #eeeeee;
+  }
+}
+
+.attachmentName {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: #333;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachmentSize {
+  font-size: 0.75em;
+  color: #777;
+  margin-top: 2px;
+}
+
+:global(html[data-theme='dark']) {
+  .textarea {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.87);
+
+    &:focus {
+      border-color: rgba(144, 202, 249, 0.5);
+    }
+
+    &:disabled {
+      background-color: rgba(255, 255, 255, 0.04);
+      color: rgba(255, 255, 255, 0.45);
+    }
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.45);
+    }
+  }
+
+  .textareaBlocked {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.12) !important;
+    color: rgba(255, 255, 255, 0.4) !important;
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.38) !important;
+    }
+  }
+
+  .fileButton {
+    background-color: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.8);
+
+    &:hover:not(.disabled) {
+      background-color: rgba(255, 255, 255, 0.12);
+    }
+  }
+
+  .fileButtonBlocked {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.35) !important;
+  }
+
+  .replyHeader {
+    background-color: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.87);
+
+    .replyText {
+      color: rgba(255, 255, 255, 0.55);
+    }
+  }
+
+  .attachmentItem {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.09);
+    }
+  }
+
+  .attachmentName {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  .attachmentSize {
+    color: rgba(255, 255, 255, 0.5);
+  }
+}

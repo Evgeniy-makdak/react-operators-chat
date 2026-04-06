@@ -1,0 +1,45 @@
+{
+  "name": "react-operators-chat",
+  "version": "0.1.0",
+  "description": "Operator chat: React widget + STOMP/WebSocket + REST contract (reference implementation)",
+  "author": "Evgeniy (https://github.com/Evgeniy-makdak)",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Evgeniy-makdak/react-operators-chat.git"
+  },
+  "keywords": [
+    "react",
+    "chat",
+    "stomp",
+    "websocket",
+    "operators",
+    "dialogs",
+    "mui"
+  ],
+  "private": false,
+  "files": [
+    "README.md",
+    "LICENSE",
+    "reference",
+    "docs"
+  ],
+  "peerDependencies": {
+    "@emotion/react": "^11.0.0",
+    "@emotion/styled": "^11.0.0",
+    "@mui/icons-material": "^6.0.0",
+    "@mui/material": "^6.0.0",
+    "crypto-js": "^4.0.0",
+    "dayjs": "^1.11.0",
+    "i18next": "^23.0.0",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0",
+    "react-i18next": "^14.0.0",
+    "react-icons": "^5.0.0"
+  },
+  "peerDependenciesMeta": {
+    "crypto-js": {
+      "optional": true
+    }
+  }
+}
