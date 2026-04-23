@@ -29,6 +29,7 @@ and this project follows semantic versioning where applicable.
 - Extended `package.json` metadata (homepage, issues URL, broader keywords).
 - Added interview talking points section in `README.md` for concise technical self-presentation.
 - Switched demo deployment workflow to `gh-pages` branch publishing to avoid Pages API bootstrap failure.
+- Published demo at site root (`/`) in addition to `/demo` to avoid manual URL suffix usage.
 
 ## [1.0.0] - 2026-04-23
 

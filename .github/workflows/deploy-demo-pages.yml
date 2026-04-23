@@ -18,6 +18,7 @@ jobs:
       - name: Prepare static demo site
         run: |
           mkdir -p site/demo
+          cp docs/demo/index.html site/index.html
           cp docs/demo/index.html site/demo/index.html
           cp -r docs/assets site/assets
           touch site/.nojekyll

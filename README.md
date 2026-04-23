@@ -28,7 +28,8 @@ Architecture notes: `docs/ARCHITECTURE.md`
 
 ## Live Demo & Screenshots
 
-- Demo page (GitHub Pages): [Open demo](https://evgeniy-makdak.github.io/react-operators-chat/demo/)
+- Demo page (GitHub Pages): [Open demo](https://evgeniy-makdak.github.io/react-operators-chat/)
+- Direct demo path: [Open /demo](https://evgeniy-makdak.github.io/react-operators-chat/demo/)
 - Local static demo source: `docs/demo/index.html`
 - If demo link is unavailable: in repo settings enable GitHub Pages with source `gh-pages` branch (`/root`).
 - Deployment note: if an old failed run is visible in Actions, run the latest workflow from `main` (or push a new commit) to use the fixed pipeline.
