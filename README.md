@@ -36,6 +36,7 @@ This repository demonstrates practical frontend engineering in a real-time domai
 - Maintenance discipline (changelog, contributor docs, issue/PR templates, roadmap).
 
 Maintainer portfolio snapshot: `PORTFOLIO.md`
+Technical case study: `docs/CASE_STUDY.md`
 
 ---
 
@@ -289,3 +290,4 @@ Requires `react-i18next` keys under `chat.*` plus direct `i18n.t` calls in `Chat
 - Integration quickstart: see `docs/INTEGRATION_QUICKSTART.md`
 - Maintainer profile page: see `PORTFOLIO.md`
 - Community behavior: see `CODE_OF_CONDUCT.md`
+- Technical case study: see `docs/CASE_STUDY.md`

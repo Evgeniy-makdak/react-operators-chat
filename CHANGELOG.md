@@ -15,6 +15,7 @@ and this project follows semantic versioning where applicable.
 - GitHub collaboration templates: bug report, feature request, and pull request template.
 - `docs/ARCHITECTURE.md` with system and event-flow diagrams.
 - `docs/INTEGRATION_QUICKSTART.md` for faster partner onboarding.
+- `docs/CASE_STUDY.md` with problem/decisions/trade-offs/results format for technical review.
 - `PORTFOLIO.md` and `CODE_OF_CONDUCT.md` for project presentation and community norms.
 - Issue template config to route security and integration questions.
 
