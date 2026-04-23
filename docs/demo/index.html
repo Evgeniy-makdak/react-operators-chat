@@ -180,7 +180,6 @@
       const transferConfirm = document.getElementById("transfer-confirm");
       const transferStatus = document.getElementById("transfer-status");
       const toastEl = document.getElementById("toast");
-      let idleClientTimer = null;
       let pendingReplyTimer = null;
 
       const dialogData = {
@@ -199,34 +198,6 @@
           { type: "out", text: "Принял, проверка займет несколько минут.", meta: "09:19 • READ" }
         ]}
       };
-
-      const clientQuestions = [
-        "Подскажите, где сейчас моя машина?",
-        "Можно уточнить статус заказа?",
-        "Почему так долго нет обновления?",
-        "Когда ориентировочно прибудет водитель?",
-        "Я могу изменить точку назначения?",
-        "Можно связаться с водителем напрямую?",
-        "Подскажите, вы меня слышите?",
-        "Что происходит с моим заказом сейчас?",
-        "Есть ли задержка по маршруту?",
-        "Где посмотреть актуальный статус?",
-        "Можно ускорить подачу автомобиля?",
-        "Я на месте, как быстро подъедут?",
-        "Почему сменился статус диалога?",
-        "Подтвердите, пожалуйста, что заявка активна.",
-        "Можно отменить заказ без штрафа?",
-        "Подскажите по оплате, все прошло?",
-        "У меня вопрос по возврату, поможете?",
-        "Это нормальная ситуация или есть проблема?",
-        "Есть новости по моему обращению?",
-        "Можете коротко объяснить, что делать дальше?",
-        "Я правильно понимаю, что нужно еще подождать?",
-        "Уточните, пожалуйста, текущую ситуацию.",
-        "Почему не получается завершить заказ?",
-        "Подскажите, куда мне сейчас обратиться?",
-        "Можно получить обновление в течение минуты?"
-      ];
 
       const clientUniversalReplies = [
         "Нужно внимательно посмотреть и оценить текущую ситуацию. Одну минуту, пожалуйста.",
@@ -277,25 +248,10 @@
       }
 
       function clearTimers() {
-        if (idleClientTimer) {
-          clearTimeout(idleClientTimer);
-          idleClientTimer = null;
-        }
         if (pendingReplyTimer) {
           clearTimeout(pendingReplyTimer);
           pendingReplyTimer = null;
         }
-      }
-
-      function scheduleClientQuestion() {
-        if (idleClientTimer) clearTimeout(idleClientTimer);
-        idleClientTimer = setTimeout(() => {
-          const question = randomFrom(clientQuestions);
-          pushMessage(activeDialogId, "in", question, now());
-          renderMessages();
-          showToast("New client question");
-          scheduleClientQuestion();
-        }, 12000 + Math.floor(Math.random() * 8000));
       }
 
       function scheduleClientReply() {
@@ -310,7 +266,6 @@
           if (dialogIdAtSchedule === activeDialogId) renderMessages();
           showToast("Client replied");
           pendingReplyTimer = null;
-          scheduleClientQuestion();
         }, 4000 + Math.floor(Math.random() * 1200));
       }
 
@@ -332,7 +287,6 @@
         dialogs.forEach((d) => d.classList.toggle("active", d.dataset.dialogId === dialogId));
         dialogTitle.textContent = dialogData[dialogId].title;
         renderMessages();
-        scheduleClientQuestion();
       }
 
       function sendMessage() {
@@ -370,7 +324,6 @@
         dialogEl.addEventListener("click", () => setActiveDialog(dialogEl.dataset.dialogId));
       });
       renderMessages();
-      scheduleClientQuestion();
     </script>
   </body>
 </html>

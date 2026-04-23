@@ -32,6 +32,7 @@ and this project follows semantic versioning where applicable.
 - Published demo at site root (`/`) in addition to `/demo` to avoid manual URL suffix usage.
 - Upgraded demo from static preview to interactive mock (send message, switch dialog, transfer dialog) and improved input bar positioning.
 - Added automated mock conversation behavior with delayed client replies (4-5 seconds) and 25 randomized universal dialog phrases.
+- Refined demo chat flow so the client replies only after operator messages (no autonomous client questions).
 
 ## [1.0.0] - 2026-04-23
 
