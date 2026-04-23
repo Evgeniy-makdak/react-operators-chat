@@ -26,21 +26,31 @@
       .section-title { font-size: 13px; color: var(--muted); padding: 12px; border-bottom: 1px solid var(--line); }
       .dialogs { padding: 8px; display: flex; flex-direction: column; gap: 8px; }
       .dialog {
-        padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc;
+        padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; cursor: pointer;
       }
       .dialog.active { border-color: #93c5fd; background: #eff6ff; }
       .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
       .name { font-weight: 600; }
       .badge { background: #dbeafe; color: #1e40af; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
-      .messages { padding: 16px; display: flex; flex-direction: column; gap: 10px; height: calc(100% - 86px); overflow: auto; }
+      .chat-main { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+      .messages { padding: 16px; display: flex; flex-direction: column; gap: 10px; flex: 1; overflow: auto; background: #f8fbff; }
       .msg { max-width: 75%; border-radius: 12px; padding: 10px 12px; line-height: 1.35; font-size: 14px; }
       .in { background: #f1f5f9; border: 1px solid var(--line); }
       .out { background: #dbeafe; border: 1px solid #bfdbfe; margin-left: auto; }
+      .sys { background: #fef9c3; border: 1px solid #fde68a; margin: 0 auto; max-width: 90%; }
       .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
       .input {
         display: flex; gap: 10px; padding: 12px; border-top: 1px solid var(--line); background: #fff;
       }
-      input, select {
+      .input-bar {
+        width: 100%;
+        padding: 11px 12px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        outline: none;
+        font-size: 14px;
+      }
+      select {
         width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none;
       }
       button {
@@ -53,6 +63,20 @@
       .muted { color: var(--muted); font-size: 13px; }
       .hidden { display: none; }
       .hint { font-size: 12px; color: var(--muted); padding: 0 12px 12px; }
+      .toast {
+        position: fixed;
+        right: 16px;
+        bottom: 16px;
+        background: #111827;
+        color: #fff;
+        padding: 10px 12px;
+        border-radius: 10px;
+        font-size: 13px;
+        opacity: 0;
+        transform: translateY(8px);
+        transition: 0.2s ease;
+      }
+      .toast.show { opacity: 1; transform: translateY(0); }
     </style>
   </head>
   <body>
@@ -63,27 +87,28 @@
     <div class="layout">
       <section class="card">
         <div class="section-title">Dialogs</div>
-        <div class="dialogs">
-          <div class="dialog active">
+        <div class="dialogs" id="dialogs-list">
+          <div class="dialog active" data-dialog-id="10428">
             <div class="row"><span class="name">Иван Петров</span><span class="badge">3</span></div>
             <div class="muted">Оплата и статус заказа</div>
           </div>
-          <div class="dialog">
+          <div class="dialog" data-dialog-id="10429">
             <div class="row"><span class="name">Анна Смирнова</span><span class="badge">1</span></div>
             <div class="muted">Запрос возврата</div>
           </div>
-          <div class="dialog">
+          <div class="dialog" data-dialog-id="10430">
             <div class="row"><span class="name">Алексей К.</span><span class="badge">0</span></div>
             <div class="muted">Проверка документов</div>
           </div>
         </div>
       </section>
       <section class="card">
+        <div class="chat-main">
         <div class="section-title row" style="padding:12px 16px;">
-          <span>Dialog #10428 • ACTIVE</span>
+          <span id="dialog-title">Dialog #10428 • ACTIVE</span>
           <button id="toggle-transfer" class="ghost">Transfer dialog</button>
         </div>
-        <div class="messages">
+        <div class="messages" id="messages">
           <div class="msg in">
             Добрый день! Где сейчас мой водитель?
             <div class="meta">11:02</div>
@@ -102,8 +127,9 @@
           </div>
         </div>
         <div class="input">
-          <input type="text" value="Оставайтесь на связи, обновляю статус..." />
-          <button>Send</button>
+          <input id="message-input" class="input-bar" type="text" value="Оставайтесь на связи, обновляю статус..." />
+          <button id="send-btn">Send</button>
+        </div>
         </div>
       </section>
       <aside class="card">
@@ -116,12 +142,14 @@
           <div id="transfer-panel" class="box hidden">
             <strong>Transfer to operator</strong>
             <div style="height:8px"></div>
-            <select>
-              <option>Мария Волкова (Online)</option>
-              <option>Павел Николаев</option>
+            <select id="operator-select">
+              <option value="Мария Волкова (Online)">Мария Волкова (Online)</option>
+              <option value="Павел Николаев">Павел Николаев</option>
+              <option value="Никита Орлов">Никита Орлов</option>
             </select>
             <div style="height:8px"></div>
-            <button style="width:100%">Confirm transfer</button>
+            <button id="transfer-confirm" style="width:100%">Confirm transfer</button>
+            <div id="transfer-status" class="muted" style="margin-top:8px;">Current operator: Егор Макдак</div>
           </div>
           <div class="box">
             <strong>Debug traces</strong>
@@ -137,13 +165,103 @@
         <div class="hint">Tip: append <code>?transfer=1</code> to URL to open transfer panel.</div>
       </aside>
     </div>
+    <div id="toast" class="toast"></div>
     <script>
       const params = new URLSearchParams(window.location.search);
       const panel = document.getElementById("transfer-panel");
       const btn = document.getElementById("toggle-transfer");
+      const sendBtn = document.getElementById("send-btn");
+      const messageInput = document.getElementById("message-input");
+      const messagesEl = document.getElementById("messages");
+      const dialogs = Array.from(document.querySelectorAll(".dialog"));
+      const dialogTitle = document.getElementById("dialog-title");
+      const operatorSelect = document.getElementById("operator-select");
+      const transferConfirm = document.getElementById("transfer-confirm");
+      const transferStatus = document.getElementById("transfer-status");
+      const toastEl = document.getElementById("toast");
+
+      const dialogData = {
+        "10428": { title: "Dialog #10428 • ACTIVE", unread: 3, messages: [
+          { type: "in", text: "Добрый день! Где сейчас мой водитель?", meta: "11:02" },
+          { type: "out", text: "Здравствуйте! Проверяю маршрут, секунду.", meta: "11:03 • DELIVERED" },
+          { type: "in", text: "Спасибо, жду информацию.", meta: "11:03" },
+          { type: "out", text: "Водитель будет через 7-10 минут. Отметил высокий приоритет.", meta: "11:04 • READ" }
+        ]},
+        "10429": { title: "Dialog #10429 • ACTIVE", unread: 1, messages: [
+          { type: "in", text: "Хочу оформить возврат по заказу 982.", meta: "10:54" },
+          { type: "out", text: "Подскажите причину возврата, пожалуйста.", meta: "10:55 • DELIVERED" }
+        ]},
+        "10430": { title: "Dialog #10430 • ACTIVE", unread: 0, messages: [
+          { type: "in", text: "Документы отправил, проверьте.", meta: "09:18" },
+          { type: "out", text: "Принял, проверка займет несколько минут.", meta: "09:19 • READ" }
+        ]}
+      };
+
+      let activeDialogId = "10428";
+
+      function now() {
+        return new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+
+      function showToast(text) {
+        toastEl.textContent = text;
+        toastEl.classList.add("show");
+        setTimeout(() => toastEl.classList.remove("show"), 1700);
+      }
+
+      function renderMessages() {
+        const current = dialogData[activeDialogId];
+        messagesEl.innerHTML = "";
+        current.messages.forEach((m) => {
+          const item = document.createElement("div");
+          item.className = `msg ${m.type}`;
+          item.innerHTML = `${m.text}<div class="meta">${m.meta}</div>`;
+          messagesEl.appendChild(item);
+        });
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function setActiveDialog(dialogId) {
+        activeDialogId = dialogId;
+        dialogs.forEach((d) => d.classList.toggle("active", d.dataset.dialogId === dialogId));
+        dialogTitle.textContent = dialogData[dialogId].title;
+        renderMessages();
+      }
+
+      function sendMessage() {
+        const text = messageInput.value.trim();
+        if (!text) return;
+        dialogData[activeDialogId].messages.push({ type: "out", text, meta: `${now()} • SENT` });
+        messageInput.value = "";
+        renderMessages();
+        showToast("Message sent (demo mode)");
+      }
+
+      function confirmTransfer() {
+        const target = operatorSelect.value;
+        transferStatus.textContent = `Current operator: ${target}`;
+        dialogData[activeDialogId].messages.push({
+          type: "sys",
+          text: `Диалог передан оператору: ${target}`,
+          meta: now()
+        });
+        renderMessages();
+        panel.classList.add("hidden");
+        showToast(`Dialog transferred to ${target}`);
+      }
+
       const open = params.get("transfer") === "1";
       if (open) panel.classList.remove("hidden");
       btn.addEventListener("click", () => panel.classList.toggle("hidden"));
+      sendBtn.addEventListener("click", sendMessage);
+      messageInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendMessage();
+      });
+      transferConfirm.addEventListener("click", confirmTransfer);
+      dialogs.forEach((dialogEl) => {
+        dialogEl.addEventListener("click", () => setActiveDialog(dialogEl.dataset.dialogId));
+      });
+      renderMessages();
     </script>
   </body>
 </html>

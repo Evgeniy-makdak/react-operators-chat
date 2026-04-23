@@ -30,6 +30,7 @@ and this project follows semantic versioning where applicable.
 - Added interview talking points section in `README.md` for concise technical self-presentation.
 - Switched demo deployment workflow to `gh-pages` branch publishing to avoid Pages API bootstrap failure.
 - Published demo at site root (`/`) in addition to `/demo` to avoid manual URL suffix usage.
+- Upgraded demo from static preview to interactive mock (send message, switch dialog, transfer dialog) and improved input bar positioning.
 
 ## [1.0.0] - 2026-04-23
 
