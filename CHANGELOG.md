@@ -31,6 +31,7 @@ and this project follows semantic versioning where applicable.
 - Switched demo deployment workflow to `gh-pages` branch publishing to avoid Pages API bootstrap failure.
 - Published demo at site root (`/`) in addition to `/demo` to avoid manual URL suffix usage.
 - Upgraded demo from static preview to interactive mock (send message, switch dialog, transfer dialog) and improved input bar positioning.
+- Added automated mock conversation behavior with delayed client replies (4-5 seconds) and 25 randomized universal dialog phrases.
 
 ## [1.0.0] - 2026-04-23
 

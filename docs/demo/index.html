@@ -39,6 +39,7 @@
       .out { background: #dbeafe; border: 1px solid #bfdbfe; margin-left: auto; }
       .sys { background: #fef9c3; border: 1px solid #fde68a; margin: 0 auto; max-width: 90%; }
       .meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+      .typing { background: #eef2f7; border: 1px dashed #cbd5e1; color: #64748b; font-style: italic; }
       .input {
         display: flex; gap: 10px; padding: 12px; border-top: 1px solid var(--line); background: #fff;
       }
@@ -179,6 +180,8 @@
       const transferConfirm = document.getElementById("transfer-confirm");
       const transferStatus = document.getElementById("transfer-status");
       const toastEl = document.getElementById("toast");
+      let idleClientTimer = null;
+      let pendingReplyTimer = null;
 
       const dialogData = {
         "10428": { title: "Dialog #10428 • ACTIVE", unread: 3, messages: [
@@ -197,6 +200,62 @@
         ]}
       };
 
+      const clientQuestions = [
+        "Подскажите, где сейчас моя машина?",
+        "Можно уточнить статус заказа?",
+        "Почему так долго нет обновления?",
+        "Когда ориентировочно прибудет водитель?",
+        "Я могу изменить точку назначения?",
+        "Можно связаться с водителем напрямую?",
+        "Подскажите, вы меня слышите?",
+        "Что происходит с моим заказом сейчас?",
+        "Есть ли задержка по маршруту?",
+        "Где посмотреть актуальный статус?",
+        "Можно ускорить подачу автомобиля?",
+        "Я на месте, как быстро подъедут?",
+        "Почему сменился статус диалога?",
+        "Подтвердите, пожалуйста, что заявка активна.",
+        "Можно отменить заказ без штрафа?",
+        "Подскажите по оплате, все прошло?",
+        "У меня вопрос по возврату, поможете?",
+        "Это нормальная ситуация или есть проблема?",
+        "Есть новости по моему обращению?",
+        "Можете коротко объяснить, что делать дальше?",
+        "Я правильно понимаю, что нужно еще подождать?",
+        "Уточните, пожалуйста, текущую ситуацию.",
+        "Почему не получается завершить заказ?",
+        "Подскажите, куда мне сейчас обратиться?",
+        "Можно получить обновление в течение минуты?"
+      ];
+
+      const clientUniversalReplies = [
+        "Нужно внимательно посмотреть и оценить текущую ситуацию. Одну минуту, пожалуйста.",
+        "Понял вас, сейчас перепроверяю данные и вернусь с обновлением.",
+        "Спасибо за уточнение, беру запрос в работу прямо сейчас.",
+        "Вижу ваш вопрос, сейчас уточню детали и дам точный ответ.",
+        "Хороший вопрос, проверяю актуальную информацию по вашему диалогу.",
+        "Сейчас важно сверить статус, это займет буквально пару минут.",
+        "Принято, я уже смотрю текущие параметры и скоро отвечу.",
+        "Спасибо, что написали, сейчас все перепроверю по шагам.",
+        "Да, понимаю, сейчас уточню нюансы и вернусь с апдейтом.",
+        "Сейчас лучше дождаться обновления, я уже запустил проверку.",
+        "Я вас понял, в данный момент уточняю ситуацию у системы.",
+        "Секунду, пожалуйста, формирую актуальный ответ по вашему вопросу.",
+        "Да, вижу обращение, сейчас подтвержу статус и отпишусь.",
+        "Проверяю ваш запрос в приоритетном порядке, немного времени.",
+        "Понял, сейчас перепроверяю маршрут и временные ориентиры.",
+        "Спасибо за терпение, данные уже обновляются.",
+        "Сейчас соберу итоговую информацию и сразу отправлю.",
+        "Вижу, что вопрос срочный, уточняю детали без задержки.",
+        "Давайте так: я проверю текущий этап и сразу сообщу результат.",
+        "Отлично, запрос принят, сверяю факты и вернусь с ответом.",
+        "Я уже в процессе проверки, держу вас в курсе.",
+        "Понял, сейчас важно уточнить пару параметров в системе.",
+        "Спасибо, зафиксировал вопрос. Возвращаюсь с конкретикой через минуту.",
+        "Сейчас приоритизировал ваш запрос, скоро будет обновление.",
+        "Да, это можно решить; сейчас проверю доступные варианты."
+      ];
+
       let activeDialogId = "10428";
 
       function now() {
@@ -207,6 +266,52 @@
         toastEl.textContent = text;
         toastEl.classList.add("show");
         setTimeout(() => toastEl.classList.remove("show"), 1700);
+      }
+
+      function randomFrom(list) {
+        return list[Math.floor(Math.random() * list.length)];
+      }
+
+      function pushMessage(dialogId, type, text, meta) {
+        dialogData[dialogId].messages.push({ type, text, meta: meta || now() });
+      }
+
+      function clearTimers() {
+        if (idleClientTimer) {
+          clearTimeout(idleClientTimer);
+          idleClientTimer = null;
+        }
+        if (pendingReplyTimer) {
+          clearTimeout(pendingReplyTimer);
+          pendingReplyTimer = null;
+        }
+      }
+
+      function scheduleClientQuestion() {
+        if (idleClientTimer) clearTimeout(idleClientTimer);
+        idleClientTimer = setTimeout(() => {
+          const question = randomFrom(clientQuestions);
+          pushMessage(activeDialogId, "in", question, now());
+          renderMessages();
+          showToast("New client question");
+          scheduleClientQuestion();
+        }, 12000 + Math.floor(Math.random() * 8000));
+      }
+
+      function scheduleClientReply() {
+        if (pendingReplyTimer) clearTimeout(pendingReplyTimer);
+        const dialogIdAtSchedule = activeDialogId;
+        pushMessage(dialogIdAtSchedule, "typing", "Клиент печатает...", "...");
+        if (dialogIdAtSchedule === activeDialogId) renderMessages();
+        pendingReplyTimer = setTimeout(() => {
+          const currentMessages = dialogData[dialogIdAtSchedule].messages;
+          if (currentMessages[currentMessages.length - 1]?.type === "typing") currentMessages.pop();
+          pushMessage(dialogIdAtSchedule, "in", randomFrom(clientUniversalReplies), `${now()} • demo reply`);
+          if (dialogIdAtSchedule === activeDialogId) renderMessages();
+          showToast("Client replied");
+          pendingReplyTimer = null;
+          scheduleClientQuestion();
+        }, 4000 + Math.floor(Math.random() * 1200));
       }
 
       function renderMessages() {
@@ -222,19 +327,22 @@
       }
 
       function setActiveDialog(dialogId) {
+        clearTimers();
         activeDialogId = dialogId;
         dialogs.forEach((d) => d.classList.toggle("active", d.dataset.dialogId === dialogId));
         dialogTitle.textContent = dialogData[dialogId].title;
         renderMessages();
+        scheduleClientQuestion();
       }
 
       function sendMessage() {
         const text = messageInput.value.trim();
         if (!text) return;
-        dialogData[activeDialogId].messages.push({ type: "out", text, meta: `${now()} • SENT` });
+        pushMessage(activeDialogId, "out", text, `${now()} • SENT`);
         messageInput.value = "";
         renderMessages();
         showToast("Message sent (demo mode)");
+        scheduleClientReply();
       }
 
       function confirmTransfer() {
@@ -262,6 +370,7 @@
         dialogEl.addEventListener("click", () => setActiveDialog(dialogEl.dataset.dialogId));
       });
       renderMessages();
+      scheduleClientQuestion();
     </script>
   </body>
 </html>
