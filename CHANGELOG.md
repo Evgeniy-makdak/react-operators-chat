@@ -33,6 +33,7 @@ and this project follows semantic versioning where applicable.
 - Upgraded demo from static preview to interactive mock (send message, switch dialog, transfer dialog) and improved input bar positioning.
 - Added automated mock conversation behavior with delayed client replies (4-5 seconds) and 25 randomized universal dialog phrases.
 - Refined demo chat flow so the client replies only after operator messages (no autonomous client questions).
+- Replaced demo reply pool with custom randomized humorous responses and added bonus phrase trigger on every 10th operator message.
 
 ## [1.0.0] - 2026-04-23
 
