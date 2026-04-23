@@ -28,6 +28,7 @@ and this project follows semantic versioning where applicable.
 - Improved README positioning with quick start and hiring-manager oriented project highlights.
 - Extended `package.json` metadata (homepage, issues URL, broader keywords).
 - Added interview talking points section in `README.md` for concise technical self-presentation.
+- Switched demo deployment workflow to `gh-pages` branch publishing to avoid Pages API bootstrap failure.
 
 ## [1.0.0] - 2026-04-23
 

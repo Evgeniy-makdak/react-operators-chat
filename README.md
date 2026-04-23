@@ -30,6 +30,7 @@ Architecture notes: `docs/ARCHITECTURE.md`
 
 - Demo page (GitHub Pages): [Open demo](https://evgeniy-makdak.github.io/react-operators-chat/demo/)
 - Local static demo source: `docs/demo/index.html`
+- If demo link is unavailable: in repo settings enable GitHub Pages with source `gh-pages` branch (`/root`).
 
 ![Demo overview](docs/assets/demo-overview.png)
 ![Demo transfer flow](docs/assets/demo-transfer.png)
