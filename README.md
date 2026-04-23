@@ -18,6 +18,12 @@
 
 Публикация на npm «из коробки» с одним `import` запланирована отдельно; сейчас основная ценность — **контракт API** и **готовый эталон разметки/логики** в `reference/chat-widget/`.
 
+### Что обновлено в эталоне (последняя синхронизация)
+
+- Добавлен UI передачи диалога оператору: `components/TransferOperatorSelect.tsx`.
+- Добавлено debug-логирование непрочитанного: `lib/operatorUnreadDebugLog.ts`.
+- Обновлены ключевые части виджета (`ChatPanel`, `MessageFeed`, `ChatContext`, `SocketContext`, `useChatDialogHandlers` и связанные стили) в соответствии с текущей версией из монолита.
+
 ### Требования к бэкенду (краткий чеклист)
 
 1. **JWT (или совместимый токен)** в заголовке `Authorization: Bearer <token>` для HTTP и в query при открытии WebSocket: `wss://.../ws/websocket?token=<url-encoded-token>` (как ожидает эталонный клиент).
@@ -158,6 +164,12 @@
 | `LICENSE` | MIT |
 
 This package is documentation-first plus a **reference implementation**. Publishing a one-line `npm install` build may follow; for now, treat `reference/chat-widget/` as source to diff or port.
+
+### Latest reference sync (highlights)
+
+- Added transfer UI for reassigning dialogs: `components/TransferOperatorSelect.tsx`.
+- Added unread-state debug helper: `lib/operatorUnreadDebugLog.ts`.
+- Updated core widget internals (`ChatPanel`, `MessageFeed`, `ChatContext`, `SocketContext`, `useChatDialogHandlers` and related styles) to match the current monolith version.
 
 ### Backend checklist
 
