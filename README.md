@@ -1,8 +1,36 @@
 # React Operators Chat
 
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/Evgeniy-makdak/react-operators-chat?style=social)](https://github.com/Evgeniy-makdak/react-operators-chat/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/Evgeniy-makdak/react-operators-chat)](https://github.com/Evgeniy-makdak/react-operators-chat/issues)
+[![Last commit](https://img.shields.io/github/last-commit/Evgeniy-makdak/react-operators-chat)](https://github.com/Evgeniy-makdak/react-operators-chat/commits/main)
+
 Документация и **эталонная копия** виджета чата операторов (React + MUI + STOMP поверх WebSocket + REST). Репозиторий предназначен для сторонних разработчиков, которым нужно подключить такой же клиент к **своему** бэкенду.
 
 **Автор / GitHub:** [Evgeniy-makdak](https://github.com/Evgeniy-makdak)
+
+## Why this repository matters
+
+- Shows a production-style operator chat architecture: REST + STOMP/WebSocket + optimistic UI behavior.
+- Reduces integration time for backend teams by documenting exact API expectations.
+- Provides a reusable reference implementation for companies building dispatch, logistics, support, and operations dashboards.
+
+## Quick Start (for integrators)
+
+1. Copy `reference/chat-widget/` into your host React project.
+2. Wire host dependencies (`@shared/*`, app store, i18n keys `chat.*`).
+3. Provide runtime config (`apiUrl`, `wsUrl`) and JWT auth.
+4. Implement REST/STOMP routes listed below.
+5. Validate with your branch-scoped flow (`branchId`) and unread counters.
+
+## For Hiring Managers
+
+This repository demonstrates practical frontend engineering in a real-time domain:
+
+- Real-time architecture design (STOMP topics, reconnect logic, delivery/read confirmations).
+- Product-oriented UX decisions (dialog transfer, pagination, unread state sync, attachment flows).
+- Integration mindset (clear backend contract, portability from monolith to standalone reference).
+- Maintenance discipline (changelog, contributor docs, issue/PR templates, roadmap).
 
 ---
 
@@ -245,3 +273,10 @@ Requires `react-i18next` keys under `chat.*` plus direct `i18n.t` calls in `Chat
 ## Версионирование
 
 Начните с `0.1.0` в `package.json`. При изменении контракта API увеличивайте minor/major и дополняйте этот README.
+
+## Contributing and project standards
+
+- Contribution guide: see `CONTRIBUTING.md`
+- Security policy: see `SECURITY.md`
+- Changelog: see `CHANGELOG.md`
+- Planned improvements: see `ROADMAP.md`

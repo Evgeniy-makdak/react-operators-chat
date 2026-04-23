@@ -8,6 +8,10 @@
     "type": "git",
     "url": "https://github.com/Evgeniy-makdak/react-operators-chat.git"
   },
+  "homepage": "https://github.com/Evgeniy-makdak/react-operators-chat#readme",
+  "bugs": {
+    "url": "https://github.com/Evgeniy-makdak/react-operators-chat/issues"
+  },
   "keywords": [
     "react",
     "chat",
@@ -15,7 +19,11 @@
     "websocket",
     "operators",
     "dialogs",
-    "mui"
+    "mui",
+    "customer-support",
+    "real-time",
+    "typescript",
+    "frontend-architecture"
   ],
   "private": false,
   "files": [
