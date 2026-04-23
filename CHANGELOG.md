@@ -18,6 +18,8 @@ and this project follows semantic versioning where applicable.
 - `docs/CASE_STUDY.md` with problem/decisions/trade-offs/results format for technical review.
 - `PORTFOLIO.md` and `CODE_OF_CONDUCT.md` for project presentation and community norms.
 - Issue template config to route security and integration questions.
+- Static demo page `docs/demo/index.html` and generated screenshots in `docs/assets/`.
+- GitHub Pages workflow for publishing demo from `main`.
 
 ### Changed
 - Synced `reference/chat-widget/` with the current monolith chat implementation.

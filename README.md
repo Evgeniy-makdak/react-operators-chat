@@ -26,6 +26,14 @@
 Detailed setup guide: `docs/INTEGRATION_QUICKSTART.md`
 Architecture notes: `docs/ARCHITECTURE.md`
 
+## Live Demo & Screenshots
+
+- Demo page (GitHub Pages): [Open demo](https://evgeniy-makdak.github.io/react-operators-chat/demo/)
+- Local static demo source: `docs/demo/index.html`
+
+![Demo overview](docs/assets/demo-overview.png)
+![Demo transfer flow](docs/assets/demo-transfer.png)
+
 ## For Hiring Managers
 
 This repository demonstrates practical frontend engineering in a real-time domain:
