@@ -38,6 +38,15 @@ This repository demonstrates practical frontend engineering in a real-time domai
 Maintainer portfolio snapshot: `PORTFOLIO.md`
 Technical case study: `docs/CASE_STUDY.md`
 
+### Interview talking points
+
+- I extracted a real-time operator chat from a monolith into a standalone reference repository.
+- I documented REST and STOMP contracts to reduce backend/frontend integration risk.
+- I designed around operational reliability: reconnect behavior, delivery/read confirmations, unread consistency.
+- I improved maintainability with contributor/security standards, roadmap, and collaboration templates.
+- I treated the repository as a product artifact: onboarding docs, architecture diagrams, and business-oriented context.
+- I can explain trade-offs (speed vs abstraction, compatibility vs strictness) and how they impact delivery timelines.
+
 ---
 
 ## Русский

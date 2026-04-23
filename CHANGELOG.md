@@ -25,6 +25,7 @@ and this project follows semantic versioning where applicable.
 - Expanded `README.md` (RU + EN) with a "latest sync" summary section.
 - Improved README positioning with quick start and hiring-manager oriented project highlights.
 - Extended `package.json` metadata (homepage, issues URL, broader keywords).
+- Added interview talking points section in `README.md` for concise technical self-presentation.
 
 ## [1.0.0] - 2026-04-23
 
