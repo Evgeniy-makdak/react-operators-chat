@@ -13,6 +13,10 @@ and this project follows semantic versioning where applicable.
 - Initial changelog file for tracking standalone sync history.
 - `CONTRIBUTING.md`, `SECURITY.md`, and `ROADMAP.md` for stronger open-source onboarding.
 - GitHub collaboration templates: bug report, feature request, and pull request template.
+- `docs/ARCHITECTURE.md` with system and event-flow diagrams.
+- `docs/INTEGRATION_QUICKSTART.md` for faster partner onboarding.
+- `PORTFOLIO.md` and `CODE_OF_CONDUCT.md` for project presentation and community norms.
+- Issue template config to route security and integration questions.
 
 ### Changed
 - Synced `reference/chat-widget/` with the current monolith chat implementation.

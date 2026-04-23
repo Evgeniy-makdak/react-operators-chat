@@ -23,6 +23,9 @@
 4. Implement REST/STOMP routes listed below.
 5. Validate with your branch-scoped flow (`branchId`) and unread counters.
 
+Detailed setup guide: `docs/INTEGRATION_QUICKSTART.md`
+Architecture notes: `docs/ARCHITECTURE.md`
+
 ## For Hiring Managers
 
 This repository demonstrates practical frontend engineering in a real-time domain:
@@ -31,6 +34,8 @@ This repository demonstrates practical frontend engineering in a real-time domai
 - Product-oriented UX decisions (dialog transfer, pagination, unread state sync, attachment flows).
 - Integration mindset (clear backend contract, portability from monolith to standalone reference).
 - Maintenance discipline (changelog, contributor docs, issue/PR templates, roadmap).
+
+Maintainer portfolio snapshot: `PORTFOLIO.md`
 
 ---
 
@@ -280,3 +285,7 @@ Requires `react-i18next` keys under `chat.*` plus direct `i18n.t` calls in `Chat
 - Security policy: see `SECURITY.md`
 - Changelog: see `CHANGELOG.md`
 - Planned improvements: see `ROADMAP.md`
+- Architecture: see `docs/ARCHITECTURE.md`
+- Integration quickstart: see `docs/INTEGRATION_QUICKSTART.md`
+- Maintainer profile page: see `PORTFOLIO.md`
+- Community behavior: see `CODE_OF_CONDUCT.md`
