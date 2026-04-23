@@ -36,6 +36,8 @@ interface MessageInputProps {
   lastSendError?: string | null;
   dialogStatus?: string;
   isDialogBlockedByOtherOperator?: boolean;
+  /** ФИО оператора, заблокировавшего диалог (для предупреждения и подсказок). */
+  blockingOperatorLabel?: string;
 }
 
 const MAX_ATTACHMENTS = 5;
@@ -58,6 +60,7 @@ function MessageInput({
   lastSendError = null,
   dialogStatus = '',
   isDialogBlockedByOtherOperator = false,
+  blockingOperatorLabel,
 }: MessageInputProps) {
   const { t } = useTranslation();
   const { sendMessage } = useChat();
@@ -361,7 +364,9 @@ function MessageInput({
 
   const getSendButtonTooltip = () => {
     if (isDialogBlockedByOtherOperator) {
-      return t('chat.sendBlockedByOther');
+      return blockingOperatorLabel
+        ? t('chat.sendBlockedByOtherNamed', { fullName: blockingOperatorLabel })
+        : t('chat.sendBlockedByOther');
     }
     if (dialogStatus !== 'CLOSED') {
       return t('chat.sendNeedTake');
@@ -394,7 +399,9 @@ function MessageInput({
       return t('chat.fileCompressing');
     }
     if (isDialogBlockedByOtherOperator) {
-      return t('chat.fileBlockedByOther');
+      return blockingOperatorLabel
+        ? t('chat.fileBlockedByOtherNamed', { fullName: blockingOperatorLabel })
+        : t('chat.fileBlockedByOther');
     }
     if (dialogStatus !== 'CLOSED') {
       return t('chat.fileNeedTake');
@@ -539,7 +546,10 @@ function MessageInput({
             borderRadius: '4px',
             borderLeft: '4px solid #d32f2f',
           }}>
-          ⚠️ {t('chat.blockedViewOnly')}
+          ⚠️{' '}
+          {blockingOperatorLabel
+            ? t('chat.blockedViewOnlyNamed', { fullName: blockingOperatorLabel })
+            : t('chat.blockedViewOnly')}
         </div>
       )}
 

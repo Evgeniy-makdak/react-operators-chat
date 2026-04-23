@@ -1,13 +1,18 @@
-/** Трассировка счётчиков непрочитанного: WS → Zustand/React state → рендер бейджей. */
+/**
+ * Старые console.trace отключены. Живые логи: lib/operatorUnreadDebugLog.ts, localStorage CHAT_UNREAD_DEBUG.
+ */
 
 export const CHAT_UNREAD_LOG_TAG = '[ChatUnread]';
+export const CHAT_SESSION_LOG_TAG = '[ChatSession]';
 
-export function chatUnreadTrace(stage: string, payload?: Record<string, unknown>) {
-  if (payload === undefined) {
-    console.log(`${CHAT_UNREAD_LOG_TAG} ${stage}`);
-  } else {
-    console.log(`${CHAT_UNREAD_LOG_TAG} ${stage}`, payload);
-  }
+export function chatUnreadTrace(stage: string, payload?: Record<string, unknown>): void {
+  void stage;
+  void payload;
+}
+
+export function chatSessionTrace(stage: string, payload?: Record<string, unknown>): void {
+  void stage;
+  void payload;
 }
 
 export function unreadMapToRecord(map: Map<number, number>): Record<string, number> {

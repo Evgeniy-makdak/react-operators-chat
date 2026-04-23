@@ -26,17 +26,49 @@ import { DialogsApi, type UnreadDialog } from '../api/dialogsApi';
 import ChatPanel from '../components/ChatPanel';
 import { ChatProvider, useChat } from '../contexts/ChatContext';
 import { SocketProvider, useSocket } from '../contexts/SocketContext';
-import { chatUnreadTrace, unreadMapToRecord } from '../contexts/chatUnreadTrace';
+import { operatorUnreadDebug, unreadMapSnapshot } from '../lib/operatorUnreadDebugLog';
 import { resolveSessionDialogIdForUnread } from '../lib/resolveSessionDialogIdForUnread';
 import styles from './ChatFooter.module.scss';
 
 /** Должно совпадать с медиазапросом скрытия `.minimizedChats` в ChatFooter.module.scss */
 const CHAT_COMPACT_MINIMIZED_QUERY = '(max-width: 1024px)';
 
+/** Геометрия `.chatFooter` (десктоп): отступ справа + ширина; превью ставим левее развёрнутого окна с зазором. */
+const CHAT_FOOTER_RIGHT = 80;
+const CHAT_FOOTER_WIDTH = 520;
+const MINIMIZED_PREVIEW_RIGHT = CHAT_FOOTER_RIGHT + CHAT_FOOTER_WIDTH + 28;
+/** Когда все диалоги свёрнуты — превью у правого края (как панель чата), а не «в середине» экрана. */
+const MINIMIZED_PREVIEW_RIGHT_STACKED = CHAT_FOOTER_RIGHT;
+
 function normalizeSessionDialogId(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === 'assigned') return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+function hasRenderableMinimizedContent(session: {
+  selectedUsers?: unknown[];
+  selectedDialog?: { id?: unknown } | null;
+  assignedDialogId?: unknown;
+  messages?: unknown[];
+}): boolean {
+  const hasSelectedUser = (session.selectedUsers?.length ?? 0) > 0;
+  const selectedDialogId = session.selectedDialog?.id;
+  const hasSelectedDialogId = Boolean(
+    selectedDialogId != null &&
+      String(selectedDialogId) !== '' &&
+      String(selectedDialogId) !== '0' &&
+      String(selectedDialogId) !== 'assigned',
+  );
+  const assignedDialogId = session.assignedDialogId;
+  const hasAssignedDialogId = Boolean(
+    assignedDialogId != null &&
+      String(assignedDialogId) !== '' &&
+      String(assignedDialogId) !== '0' &&
+      String(assignedDialogId) !== 'assigned',
+  );
+  const hasMessages = (session.messages?.length ?? 0) > 0;
+  return hasSelectedUser || hasSelectedDialogId || hasAssignedDialogId || hasMessages;
 }
 
 /** Диалог уже открыт/привязан к какой‑либо сессии — не показывать его второй раз в превью «непрочитанных». */
@@ -108,13 +140,18 @@ function unreadCountForPreviewEntry(
   solePreviewSocketTotalHint: number = 0,
 ): number {
   const map = dialogsUnreadCounts || new Map();
+  const fromApi = Number(dialog.countUnMessages ?? dialog.countUnreadMess ?? 0);
+  const apiSafe = Number.isFinite(fromApi) ? fromApi : 0;
+  const isClosed = String((dialog as any)?.status ?? '').toUpperCase() === 'CLOSED';
   // Есть явная запись по этому диалогу — только она (иначе при ровно одной строке превью
   // solePreviewSocketTotalHint = общий агрегат и «чужой» +1 заливает бейдж другого dialogId).
   if (map.has(dialog.id)) {
-    return map.get(dialog.id)!;
+    const fromMap = map.get(dialog.id)!;
+    // Для CLOSED backend snapshot по непрочитанным может быть свежее детальной карты WS.
+    // Не даём занижать бейдж превью (кейс: map=1, фактически/API=7).
+    return isClosed ? Math.max(fromMap, apiSafe) : fromMap;
   }
-  const fromApi = Number(dialog.countUnMessages ?? dialog.countUnreadMess ?? 0);
-  const base = Number.isFinite(fromApi) ? fromApi : 0;
+  const base = apiSafe;
   if (solePreviewSocketTotalHint <= 0) return base;
   return Math.max(base, solePreviewSocketTotalHint);
 }
@@ -129,15 +166,53 @@ function effectiveMinimizedSessionUnread(
     assignedDialogId?: unknown;
     unreadCount?: number;
     messages?: any[];
+    unreadDialogs?: UnreadDialog[];
   },
   dialogsUnreadCounts: Map<number, number> | undefined,
 ): number {
   const dialogId = resolveSessionDialogIdForUnread(session);
+  const local = session.unreadCount ?? 0;
+  const fromMessages =
+    dialogId != null
+      ? (session.messages ?? []).reduce((acc: number, msg: any) => {
+          const mid = Number(msg.dialogId ?? msg.dialog?.id ?? NaN);
+          if (mid !== Number(dialogId)) return acc;
+          if (msg.messageStatus !== 'TO_OPERATOR') return acc;
+          if (msg.is_read) return acc;
+          if (String(msg.confirmStatus ?? '').toUpperCase() === 'READ') return acc;
+          return acc + 1;
+        }, 0)
+      : 0;
+  const fromUnreadDialogsApi =
+    dialogId != null
+      ? Number(
+          session.unreadDialogs?.find((d) => Number(d.id) === Number(dialogId))?.countUnMessages ??
+            session.unreadDialogs?.find((d) => Number(d.id) === Number(dialogId))
+              ?.countUnreadMess ??
+            0,
+        )
+      : 0;
+  const apiSafe = Number.isFinite(fromUnreadDialogsApi) ? fromUnreadDialogsApi : 0;
   const map = dialogsUnreadCounts;
   if (dialogId != null && map != null && map.has(dialogId)) {
-    return map.get(dialogId)!;
+    return Math.max(map.get(dialogId)!, local, apiSafe, fromMessages);
   }
-  return session.unreadCount ?? 0;
+  return Math.max(local, apiSafe, fromMessages);
+}
+
+function unreadInSessionMessagesByDialog(
+  session: { messages?: any[] } | undefined,
+  dialogId: number,
+): number {
+  if (!session?.messages?.length) return 0;
+  return session.messages.reduce((acc: number, msg: any) => {
+    const mid = Number(msg.dialogId ?? msg.dialog?.id ?? NaN);
+    if (mid !== Number(dialogId)) return acc;
+    if (msg.messageStatus !== 'TO_OPERATOR') return acc;
+    if (msg.is_read) return acc;
+    if (String(msg.confirmStatus ?? '').toUpperCase() === 'READ') return acc;
+    return acc + 1;
+  }, 0);
 }
 
 function minimizedSessionPreviewRaw(
@@ -333,6 +408,27 @@ const ChatContainer = () => {
 
   const handleExpandSession = useCallback(
     (sessionId: string) => {
+      const snap = sessions.map((s) => ({
+        id: s.id,
+        min: s.isMinimized,
+        user: s.selectedUsers?.[0],
+        dialog:
+          s.selectedDialog?.id != null
+            ? String(s.selectedDialog.id)
+            : s.assignedDialogId != null
+              ? String(s.assignedDialogId)
+              : null,
+        unread: s.unreadCount,
+      }));
+      operatorUnreadDebug(
+        'Раскрытие сессии из превью (включится скролл к первому непрочитанному при необходимости)',
+        {
+          целеваяСессия: sessionId,
+          сессии: snap,
+          развёрнуты: sessions.filter((s) => !s.isMinimized).map((s) => s.id),
+          свёрнуты: sessions.filter((s) => s.isMinimized).map((s) => s.id),
+        },
+      );
       setJustExpandedSessionId(sessionId);
       expandSession(sessionId);
     },
@@ -429,7 +525,7 @@ const ChatContainer = () => {
   const attachmentLabel = t('chat.previewAttachment');
 
   const compactMinimizedEntries = useMemo((): CompactMinimizedEntry[] => {
-    const minimized = sessions.filter((s) => s.isMinimized);
+    const minimized = sessions.filter((s) => s.isMinimized && hasRenderableMinimizedContent(s));
     const items: CompactMinimizedEntry[] = [];
 
     minimized.forEach((session) => {
@@ -449,11 +545,17 @@ const ChatContainer = () => {
     });
 
     dedupedUnreadPreviewRows.forEach(({ dialog, sessionId }) => {
-      const unreadCount = unreadCountForPreviewEntry(
+      const sessionForDialog = sessions.find((s) => s.id === sessionId);
+      const unreadFromSessionMessages = unreadInSessionMessagesByDialog(
+        sessionForDialog,
+        dialog.id,
+      );
+      const unreadCountBase = unreadCountForPreviewEntry(
         dialog,
         dialogsUnreadCounts,
         solePreviewSocketUnreadHint,
       );
+      const unreadCount = Math.max(unreadCountBase, unreadFromSessionMessages);
       const raw = (dialogPreviewLines[dialog.id] || '').trim();
       const subtitle = truncatePreviewLine(raw, 60);
       items.push({
@@ -489,20 +591,20 @@ const ChatContainer = () => {
     const listUnreadSum = compactMinimizedEntries.reduce((s, e) => s + e.unread, 0);
     const minimizedListToggleBadge =
       listUnreadSum > 0 ? listUnreadSum : compactMinimizedEntries.length;
-    chatUnreadTrace('render.ChatFooter badge snapshot', {
-      globalIconBadge: calculateTotalUnread(),
-      socketAggregateUnreadOnly: socketUnreadTotal,
-      minimizedListToggleBadge,
-      socketDialogMapEntries: unreadMapToRecord(dialogsUnreadCounts),
-      unreadPreviewRows: previewUnreadBadges,
-      minimizedSessionsUnread: sessions
+    operatorUnreadDebug('Бейджи превью и карта WS по диалогам', {
+      всегоПоИконкеЧата: calculateTotalUnread(),
+      агрегатUserQueueНеТолькоДиалоги: socketUnreadTotal,
+      суммаВКомпактномСписке: minimizedListToggleBadge,
+      картаДиалоговWs: unreadMapSnapshot(dialogsUnreadCounts),
+      строкиПревьюНеизСписка: previewUnreadBadges,
+      свёрнутыеСессии: sessions
         .filter((s) => s.isMinimized)
         .map((s) => ({
           sessionId: s.id,
-          unread: effectiveMinimizedSessionUnread(s, dialogsUnreadCounts),
+          бейдж: effectiveMinimizedSessionUnread(s, dialogsUnreadCounts),
+          sessionUnreadCount: s.unreadCount ?? 0,
         })),
-      lastMessageType: lastMessage?.type,
-      lastMessageDestination: lastMessage?.destination,
+      последнийWsТип: lastMessage?.type,
     });
   }, [
     compactMinimizedEntries,
@@ -523,7 +625,11 @@ const ChatContainer = () => {
   }
 
   const expandedSessions = sessions.filter((session) => !session.isMinimized);
-  const minimizedSessions = sessions.filter((session) => session.isMinimized);
+  const minimizedSessions = sessions.filter(
+    (session) => session.isMinimized && hasRenderableMinimizedContent(session),
+  );
+  const minimizedPreviewRightPx =
+    expandedSessions.length > 0 ? MINIMIZED_PREVIEW_RIGHT : MINIMIZED_PREVIEW_RIGHT_STACKED;
 
   const hasUnreadInCompactList = compactMinimizedEntries.some((e) => e.unread > 0);
   const compactListUnreadSum = compactMinimizedEntries.reduce((s, e) => s + e.unread, 0);
@@ -584,6 +690,7 @@ const ChatContainer = () => {
                     if (entry.kind === 'session') {
                       handleExpandSession(entry.sessionId);
                     } else {
+                      setJustExpandedSessionId(entry.sessionId);
                       void openUnreadDialog(entry.sessionId, entry.dialog);
                     }
                   }}>
@@ -633,7 +740,7 @@ const ChatContainer = () => {
               className={`${styles.minimizedChat} ${minimizedUnread > 0 ? styles.hasUnread : ''}`}
               style={{
                 bottom: `${120 + index * 60}px`,
-                right: '540px',
+                right: `${minimizedPreviewRightPx}px`,
                 zIndex: 1000 - index,
               }}
               onClick={() => handleExpandSession(session.id)}>
@@ -653,11 +760,17 @@ const ChatContainer = () => {
         })}
 
         {dedupedUnreadPreviewRows.map(({ dialog, sessionId }, index) => {
-          const unreadCount = unreadCountForPreviewEntry(
+          const sessionForDialog = sessions.find((s) => s.id === sessionId);
+          const unreadFromSessionMessages = unreadInSessionMessagesByDialog(
+            sessionForDialog,
+            dialog.id,
+          );
+          const unreadCountBase = unreadCountForPreviewEntry(
             dialog,
             dialogsUnreadCounts,
             solePreviewSocketUnreadHint,
           );
+          const unreadCount = Math.max(unreadCountBase, unreadFromSessionMessages);
           const raw = (dialogPreviewLines[dialog.id] || '').trim();
           const line = truncatePreviewLine(raw, 30);
 
@@ -669,10 +782,11 @@ const ChatContainer = () => {
               }`}
               style={{
                 bottom: `${120 + (minimizedSessions.length + index) * 60}px`,
-                right: '540px',
+                right: `${minimizedPreviewRightPx}px`,
                 zIndex: 1000 - (minimizedSessions.length + index),
               }}
               onClick={async () => {
+                setJustExpandedSessionId(sessionId);
                 await openUnreadDialog(sessionId, dialog);
               }}>
               <div className={styles.minimizedHeader}>

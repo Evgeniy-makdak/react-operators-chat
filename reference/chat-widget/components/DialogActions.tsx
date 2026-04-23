@@ -71,7 +71,8 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
     }
 
     if (justAssignedRef.current && assignedDialogIdRef.current === dialogId) {
-      if (dialogData?.lastOperator?.id === currentUserId) {
+      const loId = dialogData?.lastOperator?.id ?? dialogData?.last_operator?.id;
+      if (loId != null && Number(loId) === Number(currentUserId)) {
         lastValidDialogDataRef.current = dialogData;
         justAssignedRef.current = false;
       }
@@ -83,21 +84,30 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
 
     const dataToUse = dialogData || lastValidDialogDataRef.current;
 
-    if (dataToUse && dataToUse.lastOperator) {
-      const operatorId = dataToUse.lastOperator.id;
+    const rootLo = dataToUse?.lastOperator ?? dataToUse?.last_operator;
+    if (dataToUse && rootLo) {
+      const operatorId = rootLo.id;
       setLastOperatorId(operatorId);
-      setIsDialogOwner(operatorId === currentUserId);
+      setIsDialogOwner(Number(operatorId) === Number(currentUserId));
 
-      if (operatorId === currentUserId) {
+      if (Number(operatorId) === Number(currentUserId)) {
         lastValidDialogDataRef.current = dataToUse;
       }
-    } else if (dataToUse && dataToUse.dialog?.lastOperator) {
-      const operatorId = dataToUse.dialog.lastOperator.id;
-      setLastOperatorId(operatorId);
-      setIsDialogOwner(operatorId === currentUserId);
+    } else if (dataToUse) {
+      const nestedLo = dataToUse.dialog?.lastOperator ?? dataToUse.dialog?.last_operator;
+      if (nestedLo) {
+        const operatorId = nestedLo.id;
+        setLastOperatorId(operatorId);
+        setIsDialogOwner(Number(operatorId) === Number(currentUserId));
 
-      if (operatorId === currentUserId) {
-        lastValidDialogDataRef.current = dataToUse;
+        if (Number(operatorId) === Number(currentUserId)) {
+          lastValidDialogDataRef.current = dataToUse;
+        }
+      } else if (dialogStatus === 'CLOSED') {
+        fetchDialogDetails();
+      } else {
+        setLastOperatorId(null);
+        setIsDialogOwner(false);
       }
     } else if (dialogStatus === 'CLOSED') {
       fetchDialogDetails();
@@ -130,13 +140,17 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
 
     try {
       const dialogDetails = await api.getDialogDetails(dialogId);
-      if (dialogDetails.lastOperator) {
-        const operatorId = dialogDetails.lastOperator.id;
+      const detailsLo = dialogDetails?.lastOperator ?? dialogDetails?.last_operator;
+      if (detailsLo) {
+        const operatorId = detailsLo.id;
         setLastOperatorId(operatorId);
         setIsDialogOwner(operatorId === currentUserId);
 
         if (operatorId === currentUserId) {
-          lastValidDialogDataRef.current = dialogDetails;
+          lastValidDialogDataRef.current = {
+            ...dialogDetails,
+            lastOperator: detailsLo,
+          };
         }
       } else {
         setLastOperatorId(null);
@@ -164,21 +178,38 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
 
     try {
       const response = await api.assignDialog(userId.toString());
+      const meName = appStore.getState().fullName;
+      const normalizedResponse =
+        response && typeof response === 'object'
+          ? {
+              ...response,
+              lastOperator:
+                (response as any).lastOperator ??
+                (response as any).last_operator ??
+                (currentUserId
+                  ? {
+                      id: currentUserId,
+                      ...(meName ? { fullName: meName } : {}),
+                    }
+                  : undefined),
+            }
+          : response;
 
       const session = getSession(sessionId);
       if (session) {
         updateSession(sessionId, {
-          selectedDialog: response,
-          assignedDialogId: response?.id || null,
+          selectedDialog: normalizedResponse,
+          assignedDialogId: normalizedResponse?.id || null,
           hasLoadedDialogs: true,
           lastSendError: null,
+          transferRecipientFullName: null,
         });
 
         if (onDialogStatusChange) {
           onDialogStatusChange('CLOSED');
         }
 
-        lastValidDialogDataRef.current = response;
+        lastValidDialogDataRef.current = normalizedResponse;
       }
     } catch (error: any) {
       justAssignedRef.current = false;
@@ -191,22 +222,38 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
           );
 
           if (userDialog) {
+            const meName409 = appStore.getState().fullName;
+            const ud = userDialog as any;
+            const normalized409 = {
+              ...ud,
+              lastOperator:
+                ud.lastOperator ??
+                ud.last_operator ??
+                (currentUserId
+                  ? {
+                      id: currentUserId,
+                      ...(meName409 ? { fullName: meName409 } : {}),
+                    }
+                  : undefined),
+            };
             updateSession(sessionId, {
-              selectedDialog: userDialog,
+              selectedDialog: normalized409,
               assignedDialogId: userDialog.id,
               hasLoadedDialogs: true,
               lastSendError: null,
+              transferRecipientFullName: null,
             });
 
             if (onDialogStatusChange) {
               onDialogStatusChange('CLOSED');
             }
 
-            lastValidDialogDataRef.current = userDialog;
+            lastValidDialogDataRef.current = normalized409;
           } else {
             updateSession(sessionId, {
               assignedDialogId: 'assigned',
               lastSendError: null,
+              transferRecipientFullName: null,
             });
 
             if (onDialogStatusChange) {
@@ -217,6 +264,7 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
           updateSession(sessionId, {
             assignedDialogId: 'assigned',
             lastSendError: null,
+            transferRecipientFullName: null,
           });
 
           if (onDialogStatusChange) {
@@ -238,6 +286,7 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
       updateSession(sessionId, {
         assignedDialogId: null,
         lastSendError: null,
+        transferRecipientFullName: null,
         selectedDialog: {
           ...session?.selectedDialog,
           status: 'OPEN',
@@ -256,22 +305,6 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
       setIsLoading(false);
     }
   };
-
-  // const handleTransferDialog = async () => {
-  //   if (isLoading || !hasExistingDialog || !isAssigned || !isDialogOwner || !currentUserId) return;
-
-  //   setIsLoading(true);
-  //   try {
-  //     await api.transferDialog({
-  //       dialogId: dialogId,
-  //       targetOperatorId: userId.toString(),
-  //     });
-  //   } catch (error) {
-  //     console.error('Ошибка передачи диалога:', error);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
 
   const showAssignButton =
     // Либо есть существующий диалог с подходящим статусом
@@ -301,6 +334,12 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
 
   const showUnlockedMessage = hasExistingDialog && dialogStatus !== 'CLOSED' && dialogId !== '0';
 
+  const blockerLo = dialogData?.lastOperator ?? dialogData?.dialog?.lastOperator;
+  const blockerNameForTooltip =
+    blockerLo?.fullName ||
+    [blockerLo?.firstName, blockerLo?.surname].filter(Boolean).join(' ').trim() ||
+    '';
+
   return (
     <Box sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap' }}>
       {showAssignButton && (
@@ -320,19 +359,20 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
       )}
 
       {shouldShowBlockedByOther && (
-        <Tooltip title={t('chat.dialogLockedByOperator', { id: lastOperatorId })}>
+        <Tooltip
+          title={
+            blockerNameForTooltip
+              ? t('chat.dialogLockedByOperatorNamed', { fullName: blockerNameForTooltip })
+              : t('chat.dialogLockedByOperator', { id: lastOperatorId })
+          }>
           <span>
             <Button
               variant="outlined"
               size="small"
               startIcon={<Lock />}
               disabled
-              sx={{
-                fontSize: '0.75rem',
-                backgroundColor: '#ffebee',
-                color: '#d32f2f',
-              }}>
-              {t('chat.blockedByOtherButton')}
+              sx={{ fontSize: '0.75rem' }}>
+              {t('chat.take')}
             </Button>
           </span>
         </Tooltip>
@@ -352,7 +392,11 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
                 color: '#1976d2',
                 borderColor: '#90caf9',
               }}>
-              {t('chat.dialogUnlocked')}
+              {session?.transferRecipientFullName
+                ? t('chat.dialogTransferredToOperator', {
+                    fullName: session.transferRecipientFullName,
+                  })
+                : t('chat.dialogUnlocked')}
             </Button>
           </span>
         </Tooltip>
@@ -371,20 +415,6 @@ export const DialogActions: React.FC<DialogActionsProps> = ({
                 sx={{ fontSize: '0.75rem' }}>
                 {t('chat.completeDialog')}
               </Button>
-            </span>
-          </Tooltip>
-
-          <Tooltip title={t('chat.transferDialog')}>
-            <span>
-              {/* <Button
-                variant="outlined"
-                size="small"
-                startIcon={<TransferWithinAStation />}
-                onClick={handleTransferDialog}
-                disabled={isLoading}
-                sx={{ fontSize: '0.75rem' }}>
-                Передать
-              </Button> */}
             </span>
           </Tooltip>
         </>

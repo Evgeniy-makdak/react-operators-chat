@@ -3,6 +3,7 @@ import { useCallback } from 'react';
 import { ChatsApi } from '@shared/api/baseQuerys';
 
 import api from '../../api';
+import { operatorUnreadDebug } from '../../lib/operatorUnreadDebugLog';
 import { ChatConfig } from '../chatConfig';
 import { ChatRefs } from './useChatRefs';
 
@@ -10,6 +11,28 @@ interface DialogHandlersDeps {
   getSession: (sessionId: string) => any;
   updateSession: (sessionId: string, updates: any) => void;
   assignDialog: (sessionId: string, userId: number) => Promise<any>;
+}
+
+/** В открытой панели входящие с SENT с бэка показываем как DELIVERED до ответа сервера. */
+function normalizeOpenPanelInboundSentToDelivered(
+  messages: any[],
+  dialogId: string,
+  isMinimized: boolean,
+): any[] {
+  if (isMinimized || !messages?.length) return messages;
+  const d = String(dialogId);
+  return messages.map((msg: any) => {
+    const mid = String(msg.dialogId ?? msg.dialog?.id ?? '');
+    if (
+      mid === d &&
+      msg.messageStatus === 'TO_OPERATOR' &&
+      String(msg.confirmStatus ?? '').toUpperCase() === 'SENT' &&
+      !msg.is_read
+    ) {
+      return { ...msg, confirmStatus: 'DELIVERED' };
+    }
+    return msg;
+  });
 }
 
 export const useChatDialogHandlers = (refs: ChatRefs, deps: DialogHandlersDeps) => {
@@ -260,8 +283,33 @@ export const useChatDialogHandlers = (refs: ChatRefs, deps: DialogHandlersDeps) 
             hasNextMessages: false,
           };
 
+          const sessAtSave = getSession(sessionId);
+          const normalizedFirst = normalizeOpenPanelInboundSentToDelivered(
+            processedMessages,
+            dialogId,
+            !!sessAtSave?.isMinimized,
+          );
+          operatorUnreadDebug(
+            'FETCH first-page (createdAt,desc->UI asc): снимок порядка и статусов',
+            {
+              sessionId,
+              dialogId,
+              isMinimized: !!sessAtSave?.isMinimized,
+              fromApiCount: response?.content?.length ?? 0,
+              uiCount: normalizedFirst.length,
+              первые10Ui: normalizedFirst.slice(0, 10).map((m: any, idx: number) => ({
+                uiПорядок: idx + 1,
+                id: m.id,
+                text: String(m.text ?? '').slice(0, 30),
+                messageStatus: m.messageStatus,
+                confirmStatus: m.confirmStatus,
+                is_read: m.is_read,
+                created_at: m.created_at ?? m.createdAt,
+              })),
+            },
+          );
           updateSession(sessionId, {
-            messages: processedMessages,
+            messages: normalizedFirst,
             pagination: paginationUpdate,
           });
 
@@ -270,9 +318,17 @@ export const useChatDialogHandlers = (refs: ChatRefs, deps: DialogHandlersDeps) 
           loadedPagesSet.add(0);
           loadedPagesRef.current.set(loadedPagesKey, loadedPagesSet);
 
+          const hasUnreadInbound = processedMessages.some(
+            (msg: any) =>
+              msg.messageStatus === 'TO_OPERATOR' &&
+              !msg.is_read &&
+              String(msg.confirmStatus ?? '').toUpperCase() !== 'READ',
+          );
           setTimeout(() => {
             const container = document.querySelector(`[data-session-id="${sessionId}"] .feed`);
-            if (container) container.scrollTop = container.scrollHeight;
+            if (container && !hasUnreadInbound) {
+              container.scrollTop = container.scrollHeight;
+            }
           }, 100);
 
           return true;
@@ -420,8 +476,31 @@ export const useChatDialogHandlers = (refs: ChatRefs, deps: DialogHandlersDeps) 
             hasNextMessages,
           };
 
+          const sessAtSave = getSession(sessionId);
+          const messagesForStore = normalizeOpenPanelInboundSentToDelivered(
+            finalMessages,
+            dialogId,
+            !!sessAtSave?.isMinimized,
+          );
+          operatorUnreadDebug('FETCH history->store: SENT/DELIVERED входящих в открытой панели', {
+            sessionId,
+            dialogId,
+            isMinimized: !!sessAtSave?.isMinimized,
+            sentInbound: messagesForStore.filter(
+              (m: any) =>
+                m.messageStatus === 'TO_OPERATOR' &&
+                String(m.confirmStatus ?? '').toUpperCase() === 'SENT' &&
+                !m.is_read,
+            ).length,
+            deliveredInbound: messagesForStore.filter(
+              (m: any) =>
+                m.messageStatus === 'TO_OPERATOR' &&
+                String(m.confirmStatus ?? '').toUpperCase() === 'DELIVERED' &&
+                !m.is_read,
+            ).length,
+          });
           updateSession(sessionId, {
-            messages: finalMessages,
+            messages: messagesForStore,
             hasHistoryLoaded: true,
             pagination: paginationUpdate,
           });

@@ -1,16 +1,21 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { Close, Minimize } from '@mui/icons-material';
-import { IconButton } from '@mui/material';
+import { Box, IconButton, Typography } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
+
+import { appStore } from '@shared/model/app_store/AppStore';
 
 import api from '../api';
 import { useChat } from '../contexts/ChatContext';
 import { useSocket } from '../contexts/SocketContext';
+import { operatorUnreadDebug } from '../lib/operatorUnreadDebugLog';
 import styles from './ChatPanel.module.scss';
 import { DialogActions } from './DialogActions';
 import MessageFeed from './MessageFeed';
 import MessageInput from './MessageInput';
+import { TransferOperatorSelect } from './TransferOperatorSelect';
 import UsersSelect from './UsersSelect';
 
 interface ChatPanelProps {
@@ -20,6 +25,30 @@ interface ChatPanelProps {
   onScrollToBottomDone?: () => void;
 }
 
+function getLastOperatorIdFromDialog(d: any): number | string | undefined {
+  if (!d || typeof d !== 'object') return undefined;
+  const lo = d.lastOperator ?? d.last_operator ?? d.dialog?.lastOperator ?? d.dialog?.last_operator;
+  return lo?.id;
+}
+
+/** Активный dialogId для ленты: мета сессии или fallback из сообщений (пока selectedDialog не проставлен). */
+function resolveActiveFeedDialogIdStr(session: any): string | null {
+  if (!session) return null;
+  let sid =
+    session.selectedDialog?.id && String(session.selectedDialog.id) !== '0'
+      ? String(session.selectedDialog.id)
+      : session.assignedDialogId &&
+          String(session.assignedDialogId) !== '0' &&
+          String(session.assignedDialogId) !== 'assigned'
+        ? String(session.assignedDialogId)
+        : null;
+  if (sid == null && session.messages?.length) {
+    const m = session.messages.find((x: any) => x.dialogId != null || x.dialog?.id != null);
+    if (m) sid = String(m.dialogId ?? m.dialog?.id ?? '');
+  }
+  return sid && sid !== '' ? sid : null;
+}
+
 function ChatPanel({
   sessionId,
   onMinimize,
@@ -27,9 +56,12 @@ function ChatPanel({
   onScrollToBottomDone,
 }: ChatPanelProps) {
   const { t } = useTranslation();
-  const { dialogsUnreadCounts } = useSocket();
+  const theme = useTheme();
+  const { dialogsUnreadCounts, updateDialogUnreadCount } = useSocket();
   const {
+    sessions,
     closeSession,
+    setIsChatOpen,
     toggleSessionMinimize,
     updateSession,
     getSession,
@@ -45,6 +77,7 @@ function ChatPanel({
   } = useChat();
 
   const session = getSession(sessionId);
+  const resolvedFeedDialogIdStr = useMemo(() => resolveActiveFeedDialogIdStr(session), [session]);
 
   /** Актуальный getSession без подписки useCallback на usersCache — иначе цикл запросов в UsersSelect. */
   const getSessionLiveRef = useRef(getSession);
@@ -58,15 +91,18 @@ function ChatPanel({
   const [dialogStatus, setDialogStatus] = useState<string>('');
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [isDialogReallyBlocked, setIsDialogReallyBlocked] = useState(false);
+  const [isTransferLoading, setIsTransferLoading] = useState(false);
+
+  const authId = appStore((state) => state.authId);
 
   const isUpdatingRef = useRef(false);
   const prevSessionIdRef = useRef<string>(sessionId);
   const lastMessageCountRef = useRef<number>(0);
   const lastStableUnreadCountRef = useRef<number>(0);
   const unreadCountDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  const headerUnreadLogRef = useRef<number | null>(null);
   const initialLoadDoneRef = useRef(false);
   const historyLoadAttemptedRef = useRef(false);
-  const refreshAfterReadTriggeredRef = useRef(false);
   const isSessionSwitchingRef = useRef(false);
 
   const getDisplayUserName = useCallback(() => {
@@ -81,14 +117,10 @@ function ChatPanel({
 
   const stableSetUnreadCount = useCallback((newCount: number) => {
     if (unreadCountDebounceRef.current) clearTimeout(unreadCountDebounceRef.current);
-
-    unreadCountDebounceRef.current = setTimeout(() => {
-      if (newCount !== lastStableUnreadCountRef.current) {
-        setUnreadCount(newCount);
-        lastStableUnreadCountRef.current = newCount;
-      }
-      unreadCountDebounceRef.current = null;
-    }, 150);
+    if (newCount !== lastStableUnreadCountRef.current) {
+      lastStableUnreadCountRef.current = newCount;
+      setUnreadCount(newCount);
+    }
   }, []);
 
   useEffect(() => {
@@ -122,14 +154,7 @@ function ChatPanel({
       }
 
       if (session.messages) {
-        const activeSid =
-          session.selectedDialog?.id && String(session.selectedDialog.id) !== '0'
-            ? String(session.selectedDialog.id)
-            : session.assignedDialogId &&
-                String(session.assignedDialogId) !== '0' &&
-                String(session.assignedDialogId) !== 'assigned'
-              ? String(session.assignedDialogId)
-              : null;
+        const activeSid = resolvedFeedDialogIdStr;
         const msgsForUnread =
           activeSid != null
             ? session.messages.filter(
@@ -176,6 +201,7 @@ function ChatPanel({
   }, [
     session,
     sessionId,
+    resolvedFeedDialogIdStr,
     getPendingAttachments,
     attachments,
     dialogStatus,
@@ -191,7 +217,6 @@ function ChatPanel({
       lastStableUnreadCountRef.current = 0;
       initialLoadDoneRef.current = false;
       historyLoadAttemptedRef.current = false;
-      refreshAfterReadTriggeredRef.current = false;
       isSessionSwitchingRef.current = false;
     }
   }, [sessionId]);
@@ -273,31 +298,11 @@ function ChatPanel({
         !session.selectedDialog?.status;
 
       if (hasDialogId && isDialogClosed) {
-        loadDialogHistory(sessionId, session.selectedDialog.id).then(() => {
-          // После загрузки истории прокручиваем вниз
-          setTimeout(() => {
-            const messageFeed = document.querySelector(
-              `[data-session-id="${sessionId}"] .${styles.feed}`,
-            );
-            if (messageFeed) {
-              messageFeed.scrollTop = messageFeed.scrollHeight;
-            }
-          }, 100);
-        });
+        loadDialogHistory(sessionId, session.selectedDialog.id).catch(console.error);
       } else if (isDialogOpen && !hasDialogId) {
         loadMessagesByUserId(sessionId, userId)
           .catch(console.error)
-          .finally(() => {
-            // После загрузки сообщений прокручиваем вниз
-            setTimeout(() => {
-              const messageFeed = document.querySelector(
-                `[data-session-id="${sessionId}"] .${styles.feed}`,
-              );
-              if (messageFeed) {
-                messageFeed.scrollTop = messageFeed.scrollHeight;
-              }
-            }, 100);
-          });
+          .finally(() => undefined);
       }
 
       initialLoadDoneRef.current = true;
@@ -330,11 +335,12 @@ function ChatPanel({
               });
             }
 
+            const incomingLo = dialogDetails.lastOperator ?? dialogDetails.last_operator;
             updateSession(sessionId, {
               selectedDialog: {
                 ...session.selectedDialog,
                 status: dialogDetails.status,
-                lastOperator: dialogDetails.lastOperator,
+                ...(incomingLo != null ? { lastOperator: incomingLo } : {}),
               },
             });
           }
@@ -362,6 +368,7 @@ function ChatPanel({
           messages: [],
           hasSentMessage: false,
           isDialogEnded: false,
+          transferRecipientFullName: null,
           pagination: {
             currentPage: 0,
             totalPages: 0,
@@ -380,7 +387,6 @@ function ChatPanel({
         stableSetUnreadCount(0);
         initialLoadDoneRef.current = false;
         historyLoadAttemptedRef.current = false;
-        refreshAfterReadTriggeredRef.current = false;
       } else {
         /* Иначе остаётся selectedDialog/assignedDialogId от предыдущего пользователя:
          loadMessagesByUserId уходит в refreshSessionMessages(старый dialogId), запросов по новому userId нет,
@@ -395,6 +401,7 @@ function ChatPanel({
           isDialogEnded: false,
           hasLoadedDialogs: false,
           lastSendError: null,
+          transferRecipientFullName: null,
           pagination: {
             currentPage: 0,
             totalPages: 0,
@@ -407,7 +414,6 @@ function ChatPanel({
         });
         initialLoadDoneRef.current = false;
         historyLoadAttemptedRef.current = false;
-        refreshAfterReadTriggeredRef.current = false;
       }
     },
     [sessionId, updateSession, clearPendingAttachments, stableSetUnreadCount],
@@ -468,7 +474,6 @@ function ChatPanel({
 
       initialLoadDoneRef.current = false;
       historyLoadAttemptedRef.current = false;
-      refreshAfterReadTriggeredRef.current = false;
     },
     [sessionId, updateSession, session?.usersCache],
   );
@@ -476,11 +481,27 @@ function ChatPanel({
   const handleMinimize = useCallback(() => {
     if (onMinimize) {
       onMinimize();
-    } else {
+    } else if (session?.selectedDialog?.id) {
       toggleSessionMinimize(sessionId);
       setActiveSessionId(null);
+    } else {
+      closeSession(sessionId);
     }
-  }, [sessionId, toggleSessionMinimize, onMinimize, setActiveSessionId]);
+  }, [
+    session?.selectedDialog?.id,
+    sessionId,
+    toggleSessionMinimize,
+    onMinimize,
+    setActiveSessionId,
+    closeSession,
+  ]);
+
+  const handleCloseAllChats = useCallback(() => {
+    sessions.forEach((s) => {
+      closeSession(s.id);
+    });
+    setIsChatOpen(false);
+  }, [sessions, closeSession, setIsChatOpen]);
 
   const updateUsersCache = useCallback(
     (users: any[]) => {
@@ -577,6 +598,7 @@ function ChatPanel({
       setDialogStatus(status);
       if (session?.selectedDialog) {
         updateSession(sessionId, {
+          ...(status === 'OPEN' ? { transferRecipientFullName: null } : {}),
           selectedDialog: {
             ...session.selectedDialog,
             status: status,
@@ -587,32 +609,207 @@ function ChatPanel({
     [sessionId, updateSession, session?.selectedDialog],
   );
 
+  const handleTransferToOperator = useCallback(
+    async (targetOperatorId: number, pickedLabel: string) => {
+      const live = getSession(sessionId);
+      if (!live || isTransferLoading) return;
+
+      const sel = live.selectedDialog;
+      const rawDialogId = sel?.id;
+      const assigned = live.assignedDialogId;
+      const effectiveDialogId =
+        rawDialogId != null && String(rawDialogId) !== '0'
+          ? String(rawDialogId)
+          : assigned != null &&
+              String(assigned) !== '' &&
+              String(assigned) !== '0' &&
+              String(assigned) !== 'assigned'
+            ? String(assigned)
+            : '';
+
+      const uid = authId != null ? Number(authId) : NaN;
+      if (
+        !effectiveDialogId ||
+        effectiveDialogId === '0' ||
+        targetOperatorId === uid ||
+        !Number.isFinite(uid) ||
+        !sel ||
+        sel.id === '0'
+      ) {
+        return;
+      }
+
+      const effectiveStatus = String(sel.status || '').trim();
+      if (effectiveStatus !== 'CLOSED') return;
+
+      const lastOpId = getLastOperatorIdFromDialog(sel);
+      if (lastOpId == null || Number(lastOpId) !== uid) return;
+
+      setIsTransferLoading(true);
+      try {
+        const statusForTransfer = effectiveStatus || 'ACTIVE';
+        const updated = await api.transferDialog(
+          effectiveDialogId,
+          targetOperatorId,
+          statusForTransfer,
+        );
+
+        const sessionNow = getSession(sessionId);
+        const baseDialog = sessionNow?.selectedDialog || {};
+        const mergedDialog =
+          updated && typeof updated === 'object'
+            ? {
+                ...baseDialog,
+                ...updated,
+                lastOperator: (updated as any).lastOperator ??
+                  (updated as any).dialog?.lastOperator ?? { id: targetOperatorId },
+              }
+            : {
+                ...baseDialog,
+                lastOperator: { id: targetOperatorId },
+              };
+
+        const lo = mergedDialog.lastOperator as
+          | { fullName?: string; firstName?: string; surname?: string }
+          | undefined;
+        const recipientName =
+          lo?.fullName || [lo?.firstName, lo?.surname].filter(Boolean).join(' ') || pickedLabel;
+
+        updateSession(sessionId, {
+          selectedDialog: mergedDialog as any,
+          assignedDialogId: mergedDialog.id != null ? String(mergedDialog.id) : effectiveDialogId,
+          hasLoadedDialogs: true,
+          lastSendError: null,
+          transferRecipientFullName: recipientName || null,
+        });
+      } catch (error) {
+        console.error('Ошибка передачи диалога:', error);
+      } finally {
+        setIsTransferLoading(false);
+      }
+    },
+    [isTransferLoading, authId, sessionId, getSession, updateSession],
+  );
+
   const handleMarkMessagesAsRead = useCallback(
     (messageIds: string[]) => {
       if (messageIds.length > 0) {
+        operatorUnreadDebug('READ на бэк + локальное обновление ленты', {
+          sessionId,
+          messageIds,
+        });
         messageIds.forEach((messageId) => {
           sendReadStatusForMessageId(sessionId, messageId);
         });
 
-        if (!refreshAfterReadTriggeredRef.current) {
-          refreshAfterReadTriggeredRef.current = true;
-          const idSet = new Set(messageIds);
-          const updatedMessages = (session?.messages || []).map((msg: any) =>
-            idSet.has(String(msg.id)) || idSet.has(String(msg.uuid))
-              ? { ...msg, is_read: true, confirmStatus: 'READ' }
-              : msg,
-          );
+        const liveSession = getSession(sessionId);
+        const idSet = new Set(messageIds);
+        const updatedMessages = (liveSession?.messages || []).map((msg: any) =>
+          idSet.has(String(msg.id)) || idSet.has(String(msg.uuid))
+            ? { ...msg, is_read: true, confirmStatus: 'READ' }
+            : msg,
+        );
+        updateSession(sessionId, { messages: updatedMessages });
 
-          updateSession(sessionId, { messages: updatedMessages });
-
-          setTimeout(() => {
-            refreshAfterReadTriggeredRef.current = false;
-          }, 5000);
+        const activeDialogId =
+          liveSession?.selectedDialog?.id && String(liveSession.selectedDialog.id) !== '0'
+            ? String(liveSession.selectedDialog.id)
+            : liveSession?.assignedDialogId &&
+                String(liveSession.assignedDialogId) !== '' &&
+                String(liveSession.assignedDialogId) !== '0' &&
+                String(liveSession.assignedDialogId) !== 'assigned'
+              ? String(liveSession.assignedDialogId)
+              : null;
+        if (activeDialogId) {
+          const nextUnread = updatedMessages.reduce((acc: number, msg: any) => {
+            if (String(msg.dialogId ?? msg.dialog?.id ?? '') !== activeDialogId) return acc;
+            if (msg.messageStatus !== 'TO_OPERATOR') return acc;
+            if (msg.is_read) return acc;
+            if (String(msg.confirmStatus ?? '').toUpperCase() === 'READ') return acc;
+            return acc + 1;
+          }, 0);
+          stableSetUnreadCount(nextUnread);
+          updateSession(sessionId, { unreadCount: nextUnread });
+          const activeDialogNumericId = Number(activeDialogId);
+          if (Number.isFinite(activeDialogNumericId)) {
+            // Локально отправили READ: сразу синхронизируем per-dialog счётчик в socket-карте,
+            // чтобы исключить редкий "залипший +1" до прихода следующего WS-кадра.
+            updateDialogUnreadCount(activeDialogNumericId, nextUnread);
+          }
         }
       }
     },
-    [sessionId, sendReadStatusForMessageId, session?.messages, updateSession],
+    [
+      sessionId,
+      sendReadStatusForMessageId,
+      getSession,
+      updateSession,
+      stableSetUnreadCount,
+      updateDialogUnreadCount,
+    ],
   );
+
+  const activeDialogNumericId = useMemo(() => {
+    if (!resolvedFeedDialogIdStr) return NaN;
+    const n = Number(resolvedFeedDialogIdStr);
+    return Number.isFinite(n) ? n : NaN;
+  }, [resolvedFeedDialogIdStr]);
+
+  const feedUnreadFromMessages = useMemo(() => {
+    if (!session?.messages?.length || !resolvedFeedDialogIdStr) return 0;
+    const activeSid = resolvedFeedDialogIdStr;
+    const msgs = session.messages.filter(
+      (msg: any) => String(msg.dialogId ?? msg.dialog?.id ?? '') === activeSid,
+    );
+    const strict = msgs.reduce((acc: number, msg: any) => {
+      if (String(msg.confirmStatus ?? '').toUpperCase() === 'READ') return acc;
+      if (
+        msg.messageStatus === 'TO_OPERATOR' &&
+        (msg.confirmStatus === 'SENT' || msg.confirmStatus === 'DELIVERED') &&
+        !msg.is_read
+      ) {
+        return acc + 1;
+      }
+      return acc;
+    }, 0);
+    const relaxed = msgs.reduce((acc: number, msg: any) => {
+      if (String(msg.confirmStatus ?? '').toUpperCase() === 'READ') return acc;
+      if (msg.messageStatus === 'TO_OPERATOR' && !msg.is_read) return acc + 1;
+      return acc;
+    }, 0);
+    return Math.max(strict, relaxed);
+  }, [session, resolvedFeedDialogIdStr]);
+
+  const socketEntry = Number.isFinite(activeDialogNumericId)
+    ? dialogsUnreadCounts.get(activeDialogNumericId)
+    : undefined;
+
+  const displayUnreadCount = session
+    ? Math.max(unreadCount, session.unreadCount ?? 0, socketEntry ?? 0, feedUnreadFromMessages)
+    : 0;
+
+  useEffect(() => {
+    if (!session) return;
+    if (headerUnreadLogRef.current === displayUnreadCount) return;
+    headerUnreadLogRef.current = displayUnreadCount;
+    operatorUnreadDebug('Шапка открытого чата: бейдж непрочитанных', {
+      sessionId,
+      dialogId: Number.isFinite(activeDialogNumericId) ? activeDialogNumericId : null,
+      показываем: displayUnreadCount,
+      локальныйСтейтПанели: unreadCount,
+      sessionUnreadCount: session.unreadCount,
+      wsКартаПоДиалогу: socketEntry ?? null,
+      подсчётПоСообщениям: feedUnreadFromMessages,
+    });
+  }, [
+    session,
+    sessionId,
+    displayUnreadCount,
+    unreadCount,
+    socketEntry,
+    feedUnreadFromMessages,
+    activeDialogNumericId,
+  ]);
 
   if (!session) return null;
 
@@ -628,25 +825,24 @@ function ChatPanel({
     isSendingMessage,
     lastSendError,
     assignedDialogId,
+    transferRecipientFullName = null,
   } = session;
 
-  const activeDialogNumericId =
-    selectedDialog?.id != null && String(selectedDialog.id) !== '0'
-      ? Number(selectedDialog.id)
-      : assignedDialogId != null &&
-          String(assignedDialogId) !== '0' &&
-          String(assignedDialogId) !== 'assigned'
-        ? Number(assignedDialogId)
-        : NaN;
-  const socketEntry = Number.isFinite(activeDialogNumericId)
-    ? dialogsUnreadCounts.get(activeDialogNumericId)
-    : undefined;
-  /**
-   * Локальная лента может отставать от WS; обычно max(local, socket).
-   * Явный 0 в карте после прочтения — не держим «1» из устаревшего msg.is_read.
-   */
-  const displayUnreadCount =
-    socketEntry === 0 ? 0 : Math.max(unreadCount, session.unreadCount ?? 0, socketEntry ?? 0);
+  // Скролл к первому непрочитанному в MessageFeed: флаг scrollToBottomOnExpand.
+  // ChatFooter передаёт true только когда панель только что развернули из минимизации;
+  // в остальных случаях автоскролл по новым входящим не должен запускаться.
+  const shouldScrollToFirstUnreadOnExpand = useMemo(() => {
+    return Boolean(scrollToBottomOnExpand);
+  }, [scrollToBottomOnExpand]);
+
+  useEffect(() => {
+    operatorUnreadDebug('ChatPanel → MessageFeed: флаг скролла к непрочитанным', {
+      sessionId,
+      shouldScrollToFirstUnreadOnExpand,
+      displayUnreadCount,
+      пропОтChatFooter: scrollToBottomOnExpand,
+    });
+  }, [sessionId, shouldScrollToFirstUnreadOnExpand, displayUnreadCount, scrollToBottomOnExpand]);
 
   if (isMinimized) {
     return (
@@ -673,7 +869,48 @@ function ChatPanel({
     );
   }
 
-  const hasExistingDialog = selectedDialog && selectedDialog.id !== '0';
+  const hasExistingDialog =
+    (selectedDialog?.id != null && String(selectedDialog.id) !== '0') ||
+    (assignedDialogId != null &&
+      String(assignedDialogId) !== '' &&
+      String(assignedDialogId) !== '0' &&
+      String(assignedDialogId) !== 'assigned');
+
+  /** id диалога для действий (в т.ч. transfer), если в selectedDialog ещё не проставлен */
+  const resolvedDialogIdForActions =
+    selectedDialog?.id != null && String(selectedDialog.id) !== '0'
+      ? String(selectedDialog.id)
+      : assignedDialogId != null &&
+          String(assignedDialogId) !== '' &&
+          String(assignedDialogId) !== 'assigned'
+        ? String(assignedDialogId)
+        : '0';
+
+  const dialogStatusEffective = String(selectedDialog?.status || dialogStatus || '');
+  const lastOpIdForTransfer = getLastOperatorIdFromDialog(selectedDialog);
+  const uidNum = authId != null ? Number(authId) : NaN;
+  const canTransferDialog =
+    selectedUsers.length > 0 &&
+    !!hasExistingDialog &&
+    dialogStatusEffective === 'CLOSED' &&
+    lastOpIdForTransfer != null &&
+    Number.isFinite(uidNum) &&
+    Number(lastOpIdForTransfer) === uidNum;
+
+  const showTransferSection =
+    selectedUsers.length > 0 &&
+    resolvedDialogIdForActions !== '0' &&
+    dialogStatusEffective === 'CLOSED';
+
+  const blockingOperatorLo =
+    selectedDialog?.lastOperator ??
+    selectedDialog?.dialog?.lastOperator ??
+    selectedDialog?.last_operator;
+  const blockingOperatorDisplay =
+    blockingOperatorLo &&
+    (blockingOperatorLo.fullName ||
+      [blockingOperatorLo.firstName, blockingOperatorLo.surname].filter(Boolean).join(' ').trim() ||
+      (blockingOperatorLo.id != null ? t('chat.userWithId', { id: blockingOperatorLo.id }) : ''));
 
   return (
     <div className={styles.panel} data-session-id={sessionId}>
@@ -688,10 +925,7 @@ function ChatPanel({
           <IconButton size="small" onClick={handleMinimize} title={t('chat.minimizeDialog')}>
             <Minimize fontSize="small" />
           </IconButton>
-          <IconButton
-            size="small"
-            onClick={() => closeSession(sessionId)}
-            title={t('chat.closeDialog')}>
+          <IconButton size="small" onClick={handleCloseAllChats} title={t('chat.closeDialog')}>
             <Close fontSize="small" />
           </IconButton>
         </div>
@@ -710,6 +944,47 @@ function ChatPanel({
           onCheckExistingSession={handleCheckExistingSession}
           displayUserName={getDisplayUserName()}
         />
+        {showTransferSection ? (
+          <div className={styles.transferRow}>
+            {transferRecipientFullName && !canTransferDialog ? (
+              <Box
+                sx={{
+                  mt: 1.5,
+                  p: 1.25,
+                  borderRadius: 1,
+                  border: '1px solid',
+                  borderColor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(144, 202, 249, 0.45)'
+                      : theme.palette.primary.light,
+                  bgcolor:
+                    theme.palette.mode === 'dark'
+                      ? 'rgba(144, 202, 249, 0.1)'
+                      : 'rgba(25, 118, 210, 0.08)',
+                }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    lineHeight: 1.4,
+                    color:
+                      theme.palette.mode === 'dark'
+                        ? theme.palette.primary.light
+                        : theme.palette.primary.dark,
+                  }}>
+                  {t('chat.dialogTransferredToOperator', {
+                    fullName: transferRecipientFullName,
+                  })}
+                </Typography>
+              </Box>
+            ) : (
+              <TransferOperatorSelect
+                disabled={isTransferLoading || !canTransferDialog}
+                selectionResetKey={`${resolvedDialogIdForActions}-${selectedUsers[0] ?? ''}`}
+                onOperatorSelected={(id, label) => void handleTransferToOperator(id, label)}
+              />
+            )}
+          </div>
+        ) : null}
       </div>
 
       <div className={styles.dialogActionsContainer}>
@@ -717,7 +992,7 @@ function ChatPanel({
           <DialogActions
             sessionId={sessionId}
             userId={selectedUsers[0]}
-            dialogId={selectedDialog?.id || '0'}
+            dialogId={resolvedDialogIdForActions}
             hasExistingDialog={hasExistingDialog}
             onDialogStatusChange={updateDialogStatus}
             dialogData={selectedDialog}
@@ -738,8 +1013,9 @@ function ChatPanel({
           userId={selectedUsers[0]}
           selectedUserName={selectedUserName}
           onMarkMessagesAsRead={handleMarkMessagesAsRead}
-          unreadCount={displayUnreadCount}
-          scrollToBottomOnExpand={scrollToBottomOnExpand}
+          unreadCount={feedUnreadFromMessages}
+          expandUnreadHintCount={displayUnreadCount}
+          scrollToBottomOnExpand={shouldScrollToFirstUnreadOnExpand}
           onScrollToBottomDone={onScrollToBottomDone}
           dialogStatus={dialogStatus}
           isDialogBlockedByOtherOperator={isDialogReallyBlocked}
@@ -768,6 +1044,9 @@ function ChatPanel({
           lastSendError={lastSendError}
           dialogStatus={dialogStatus}
           isDialogBlockedByOtherOperator={isDialogReallyBlocked}
+          blockingOperatorLabel={
+            isDialogReallyBlocked ? blockingOperatorDisplay || undefined : undefined
+          }
         />
       </div>
     </div>

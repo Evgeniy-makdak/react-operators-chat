@@ -255,6 +255,16 @@ export const useChatMessageHandlers = (refs: ChatRefs, deps: MessageHandlersDeps
         }
       }
 
+      let confirmStatusIn = messageData.confirmStatus || 'SENT';
+      if (
+        !session.isMinimized &&
+        (messageData.messageStatus || 'TO_OPERATOR') === 'TO_OPERATOR' &&
+        String(confirmStatusIn).toUpperCase() === 'SENT' &&
+        messageData.confirmStatus !== 'READ'
+      ) {
+        confirmStatusIn = 'DELIVERED';
+      }
+
       const newMessage = {
         id: messageData.id?.toString() || messageData.uuid,
         uuid: messageData.uuid,
@@ -263,7 +273,7 @@ export const useChatMessageHandlers = (refs: ChatRefs, deps: MessageHandlersDeps
         is_read: messageData.confirmStatus === 'READ',
         sender: messageData.messageStatus === 'TO_USER' ? 'user' : 'client',
         messageStatus: messageData.messageStatus || 'TO_OPERATOR',
-        confirmStatus: messageData.confirmStatus || 'SENT',
+        confirmStatus: confirmStatusIn,
         attachments: processedAttachments,
         recipientId: messageData.recipient?.id || messageData.recipientId,
         createdBy: messageData.createdBy,
@@ -296,11 +306,19 @@ export const useChatMessageHandlers = (refs: ChatRefs, deps: MessageHandlersDeps
           : {};
 
       if (existingMessage) {
-        const updatedMessages = session.messages.map((msg: any) =>
-          msg.uuid === messageData.uuid || msg.id === messageData.id
-            ? { ...msg, ...newMessage }
-            : msg,
-        );
+        const updatedMessages = session.messages.map((msg: any) => {
+          if (msg.uuid !== messageData.uuid && msg.id !== messageData.id) return msg;
+          let next = { ...msg, ...newMessage };
+          if (
+            !session.isMinimized &&
+            next.messageStatus === 'TO_OPERATOR' &&
+            String(next.confirmStatus ?? '').toUpperCase() === 'SENT' &&
+            !next.is_read
+          ) {
+            next = { ...next, confirmStatus: 'DELIVERED' };
+          }
+          return next;
+        });
 
         updateSession(sessionId, { messages: updatedMessages, ...dialogMetaPatch });
       } else {

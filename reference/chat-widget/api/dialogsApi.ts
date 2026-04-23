@@ -12,9 +12,11 @@ export interface Dialog {
   updatedAt?: string;
 }
 
+/** Тело POST /api/v1/dialogs/transfer (swagger). */
 export interface TransferDialogData {
-  dialogId: string;
-  targetOperatorId: string;
+  dialogId: number;
+  operatorId: number;
+  dialogStatus: string;
 }
 
 export interface DialogOwner {
@@ -124,10 +126,11 @@ export class DialogsApi {
     });
   }
 
-  static transferDialog(transferData: TransferDialogData) {
+  static transferDialog(body: TransferDialogData) {
     return postQuery<Dialog, TransferDialogData>({
       url: 'api/v1/dialogs/transfer',
-      data: transferData,
+      data: body,
+      headers: { 'Content-Type': 'application/json' },
     });
   }
 

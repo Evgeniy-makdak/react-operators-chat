@@ -37,6 +37,8 @@ export interface ChatSession {
   isSendingMessage: boolean;
   lastSendError: string | null;
   assignedDialogId: string | null;
+  /** ФИО оператора после успешной передачи диалога (для подписи в UI). */
+  transferRecipientFullName?: string | null;
   unreadDialogs: UnreadDialog[];
   isLoadingUnreadDialogs: boolean;
   hasHistoryLoaded?: boolean;

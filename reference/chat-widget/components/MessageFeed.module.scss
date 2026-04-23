@@ -1065,3 +1065,216 @@
     transform: translateY(-50%) translateX(0);
   }
 }
+
+/* Мета строка под текстом сообщения (время, статус) */
+.messageFooter {
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.messageTime {
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.userMessage .messageTime {
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.supportMessage .messageTime {
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.messageFooterDeleted {
+  color: rgba(0, 0, 0, 0.45);
+}
+
+.attachmentCaption {
+  font-size: 0.8em;
+  margin-top: 2px;
+  word-break: break-all;
+  color: rgba(0, 0, 0, 0.54);
+}
+
+.supportMessage .attachmentCaption {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Тёмная тема: пузыри и элементы ленты (общий компонент — мобильная и десктопная панель чата) */
+:global(html[data-theme='dark']) {
+  .userMessage {
+    background-color: rgba(255, 255, 255, 0.09);
+    color: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .supportMessage {
+    background-color: #1565c0;
+    color: rgba(255, 255, 255, 0.98);
+    border: 1px solid rgba(100, 181, 246, 0.45);
+  }
+
+  .userMessage .senderName {
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .supportMessage .senderName {
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .deletedMessage {
+    background-color: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+
+    &.userMessage {
+      background-color: rgba(255, 255, 255, 0.07) !important;
+      border-color: rgba(144, 202, 249, 0.35) !important;
+      color: rgba(255, 255, 255, 0.55) !important;
+
+      .deletedContent {
+        color: rgba(255, 255, 255, 0.48) !important;
+      }
+    }
+
+    &.supportMessage {
+      background-color: rgba(255, 255, 255, 0.08) !important;
+      border-color: rgba(255, 255, 255, 0.2) !important;
+      color: rgba(255, 255, 255, 0.55) !important;
+
+      .deletedContent {
+        color: rgba(255, 255, 255, 0.48) !important;
+      }
+    }
+  }
+
+  .deletedContent {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .dateDivider span {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .messageActions {
+    background-color: #2d2d2d;
+    border-color: rgba(255, 255, 255, 0.18);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
+
+    button {
+      color: rgba(255, 255, 255, 0.88) !important;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+
+  .replyIndicator {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-left-color: #90caf9;
+    color: rgba(255, 255, 255, 0.72);
+
+    .replyAuthor {
+      color: rgba(255, 255, 255, 0.88);
+    }
+  }
+
+  .replyTarget {
+    background-color: rgba(144, 202, 249, 0.14) !important;
+    border-color: #90caf9 !important;
+  }
+
+  .attachmentPlaceholder {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.22);
+
+    p {
+      color: rgba(255, 255, 255, 0.55);
+    }
+  }
+
+  .attachmentPreview img {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .loadingIndicator,
+  .loadMoreIndicator,
+  .noMoreMessages {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .noMoreMessages {
+    border-top-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .loadMoreButton:disabled {
+    background-color: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.35);
+  }
+
+  .loadingIndicator .loadingSpinner {
+    border-color: rgba(255, 255, 255, 0.12);
+    border-top-color: #90caf9;
+  }
+
+  .statusIcons {
+    .sent {
+      color: rgba(255, 255, 255, 0.55) !important;
+    }
+
+    .delivered,
+    .read {
+      color: #90caf9 !important;
+    }
+  }
+
+  .unreadMessage {
+    background-color: rgba(144, 202, 249, 0.12) !important;
+    border-left-color: #90caf9 !important;
+  }
+
+  .firstUnreadMessage {
+    background-color: rgba(255, 152, 0, 0.14) !important;
+    border-left-color: #ffb74d !important;
+    animation: pulseUnreadDark 2s ease-in-out;
+  }
+
+  .unreadCountBadge {
+    border-color: #1e1e1e;
+  }
+
+  .messageTime {
+    color: rgba(255, 255, 255, 0.62);
+  }
+
+  .supportMessage .messageTime {
+    color: rgba(255, 255, 255, 0.88);
+  }
+
+  .messageFooterDeleted {
+    color: rgba(255, 255, 255, 0.45);
+  }
+
+  .attachmentCaption {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  .supportMessage .attachmentCaption {
+    color: rgba(255, 255, 255, 0.75);
+  }
+}
+
+@keyframes pulseUnreadDark {
+  0%,
+  100% {
+    background-color: rgba(255, 152, 0, 0.12);
+  }
+
+  50% {
+    background-color: rgba(255, 152, 0, 0.2);
+  }
+}

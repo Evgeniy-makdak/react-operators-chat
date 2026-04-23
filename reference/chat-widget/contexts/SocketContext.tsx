@@ -11,6 +11,7 @@ import {
 import { appStore } from '@shared/model/app_store/AppStore';
 
 import { configLoader } from '../../../config/configLoader';
+import { operatorUnreadDebug } from '../lib/operatorUnreadDebugLog';
 import {
   setStompDebugFromRuntimeConfig,
   stompDebugLog,
@@ -29,6 +30,13 @@ interface SocketContextType {
   dialogsUnreadCounts: Map<number, number>;
   setUnreadCount: (count: number) => void;
   updateDialogUnreadCount: (dialogId: number, count: number) => void;
+  /** Пересчёт из ленты сессии: с prev из актуальной Map — иначе гонка с абсолютным WS затирает счётчик нулём при пустой ленте. */
+  reconcileDialogUnreadFromSessionFeed: (
+    dialogId: number,
+    feedUnreadCount: number,
+    hasAnyMessageForDialog: boolean,
+    onApplied: (next: number, prevSocket: number) => void,
+  ) => void;
   /** Слияние снимка из REST: не затираем локальный счётчик нулём, пока агрегат по WS больше нуля (устаревший API). */
   mergeDialogUnreadFromApi: (dialogId: number, apiCount: number) => void;
   incrementDialogUnreadCount: (dialogId: number, amount?: number, dedupeKey?: string) => void;
@@ -58,6 +66,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   const hasDetailedDataRef = useRef<boolean>(false);
   const unreadAggregateRef = useRef<number>(0);
   const incomingChatMessagesQueueRef = useRef<any[]>([]);
+  const lastAbsoluteDialogUpdateAtRef = useRef<Map<number, number>>(new Map());
   /** Предотвращает повторный +1 при двойном вызове handleIncomingMessage на одно сообщение. */
   const incrementDedupeByMessageRef = useRef<Set<string>>(new Set());
 
@@ -111,6 +120,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     useDetailedCountsRef.current = false;
     hasDetailedDataRef.current = false;
     incrementDedupeByMessageRef.current.clear();
+    lastAbsoluteDialogUpdateAtRef.current.clear();
   }, []);
 
   const flushIncomingChatMessages = useCallback((): any[] => {
@@ -121,9 +131,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
 
   const calculateTotalUnread = useCallback((): number => {
     let mapSum = 0;
+    let mapDialogEntryCount = 0;
     dialogsUnreadCounts.forEach((count, dialogId) => {
-      if (dialogId > 0 && count > 0) {
-        mapSum += count;
+      if (dialogId > 0) {
+        mapDialogEntryCount++;
+        if (count > 0) {
+          mapSum += count;
+        }
       }
     });
 
@@ -131,16 +145,32 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
       return unreadCount;
     }
 
-    // Агрегат /user/queue/unread и per-dialog карта иногда расходятся по таймингу; не показывать 0,
-    // пока сумма по карте или общий кадр говорит о непрочитанном.
-    return Math.max(unreadCount, mapSum);
+    // Кадры /queue/unread/{branch}: сумма по карте совпадает с бейджами превью. Агрегат /user/queue/unread
+    // нередко выше и не успевает уменьшиться — Math.max оставлял «9» при сумме превью «6».
+    if (mapSum > 0) {
+      return mapSum;
+    }
+
+    // В карте уже есть диалоги (в т.ч. с count=0 после READ) — не держим общий бейдж на устаревшем queue.
+    if (mapDialogEntryCount > 0) {
+      return 0;
+    }
+
+    // Per-dialog режим включён, но карта ещё пуста (между кадрами) — ориентируемся на пользовательский агрегат.
+    return unreadCount;
   }, [dialogsUnreadCounts, unreadCount]);
 
   const updateDialogUnreadCount = useCallback((dialogId: number, count: number) => {
+    operatorUnreadDebug('WS: абсолютное значение непрочитанных по dialogId', {
+      dialogId,
+      count,
+      perDialogРежим: useDetailedCountsRef.current,
+    });
     setDialogsUnreadCounts((prev) => {
       const newMap = new Map(prev);
       if (useDetailedCountsRef.current || dialogId > 0) {
         newMap.set(dialogId, count);
+        lastAbsoluteDialogUpdateAtRef.current.set(dialogId, Date.now());
       }
       chatUnreadTrace('socket.setDialogUnread (absolute)', {
         dialogId,
@@ -153,6 +183,45 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
+  const reconcileDialogUnreadFromSessionFeed = useCallback(
+    (
+      dialogId: number,
+      feedUnreadCount: number,
+      hasAnyMessageForDialog: boolean,
+      onApplied: (next: number, prevSocket: number) => void,
+    ) => {
+      setDialogsUnreadCounts((prev) => {
+        const prevSocket = prev.get(dialogId) ?? 0;
+        const next = hasAnyMessageForDialog
+          ? feedUnreadCount
+          : Math.max(feedUnreadCount, prevSocket);
+        Promise.resolve().then(() => onApplied(next, prevSocket));
+        if (prev.get(dialogId) === next) {
+          return prev;
+        }
+        const newMap = new Map(prev);
+        newMap.set(dialogId, next);
+        operatorUnreadDebug('WS: согласование карты с пересчётом ленты (из prev Map)', {
+          dialogId,
+          feedUnreadCount,
+          hasAnyMessageForDialog,
+          prevSocket,
+          next,
+        });
+        chatUnreadTrace('socket.reconcileDialogUnreadFromSessionFeed', {
+          dialogId,
+          feedUnreadCount,
+          hasAnyMessageForDialog,
+          prevSocket,
+          next,
+          mapAfter: unreadMapToRecord(newMap),
+        });
+        return newMap;
+      });
+    },
+    [],
+  );
+
   const incrementDialogUnreadCount = useCallback(
     (dialogId: number, amount = 1, dedupeKey?: string) => {
       if (dedupeKey) {
@@ -164,18 +233,36 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         setTimeout(() => incrementDedupeByMessageRef.current.delete(dedupeKey), 120_000);
       }
       // Кадры /queue/unread/{branch} задают абсолют; +1 здесь при том же сообщении даёт «1→2» (OPEN/ACTIVE).
-      if (hasDetailedDataRef.current) {
-        chatUnreadTrace('socket.incrementDialogUnread (skip +1, WS per-dialog authoritative)', {
-          dialogId,
-          dedupeKey,
-        });
-        return;
-      }
+      // Но для CLOSED per-dialog кадр может не прийти, поэтому разрешаем fallback +1.
+      // Защита от double-count: если абсолютный per-dialog кадр по этому dialogId пришёл только что,
+      // считаем его авторитетным и +1 пропускаем.
       useDetailedCountsRef.current = true;
       hasDetailedDataRef.current = true;
       setDialogsUnreadCounts((prev) => {
         const newMap = new Map(prev);
         const current = newMap.get(dialogId) || 0;
+        const lastAbsoluteAt = lastAbsoluteDialogUpdateAtRef.current.get(dialogId) ?? 0;
+        const absoluteIsFresh = Date.now() - lastAbsoluteAt < 2500;
+        if (hasDetailedDataRef.current && absoluteIsFresh) {
+          chatUnreadTrace(
+            'socket.incrementDialogUnread (skip +1, recent absolute per-dialog authoritative)',
+            {
+              dialogId,
+              dedupeKey,
+              current,
+              msSinceAbsolute: Date.now() - lastAbsoluteAt,
+            },
+          );
+          return prev;
+        }
+        if (hasDetailedDataRef.current && current > 0 && !absoluteIsFresh) {
+          chatUnreadTrace('socket.incrementDialogUnread (fallback +1 without fresh absolute)', {
+            dialogId,
+            dedupeKey,
+            current,
+            msSinceAbsolute: Date.now() - lastAbsoluteAt,
+          });
+        }
         const newCount = current + amount;
         newMap.set(dialogId, newCount);
         chatUnreadTrace('socket.incrementDialogUnread', {
@@ -250,6 +337,10 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const updateUnreadCountDirect = useCallback((count: number) => {
+    operatorUnreadDebug('WS: общий агрегат непрочитанных (/user/queue/unread и т.п.)', {
+      count,
+      детальныеСчётчикиПоДиалогам: hasDetailedDataRef.current,
+    });
     chatUnreadTrace('socket.setTotalUnread (branch/user aggregate)', {
       count,
       useDetailed: useDetailedCountsRef.current,
@@ -258,6 +349,13 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
     unreadAggregateRef.current = count;
     setUnreadCount(count);
     setDialogsUnreadCounts((prev) => {
+      // Когда есть детальные per-dialog данные (hasDetailedData=true), агрегат /user/queue/unread
+      // представляет очередь конкретного пользователя, а не суммарный счётчик одного диалога.
+      // Пример бага: диалог 83 (CLOSED) в карте с count=10; новое сообщение в диалоге 96
+      // (CLOSED, не в карте) → агрегат=1 для очереди 96, но reconcile ошибочно применял бы
+      // его к диалогу 83, обнуляя до 1. Когда hasDetailedData=true, per-dialog данные
+      // авторитетны — не трогаем карту агрегатом.
+      if (hasDetailedDataRef.current) return prev;
       const positive: { id: number; c: number }[] = [];
       prev.forEach((c, id) => {
         if (id > 0 && c > 0) positive.push({ id, c });
@@ -822,6 +920,7 @@ export const SocketProvider = ({ children }: { children: ReactNode }) => {
         dialogsUnreadCounts,
         setUnreadCount: updateUnreadCountDirect,
         updateDialogUnreadCount,
+        reconcileDialogUnreadFromSessionFeed,
         mergeDialogUnreadFromApi,
         incrementDialogUnreadCount,
         calculateTotalUnread,

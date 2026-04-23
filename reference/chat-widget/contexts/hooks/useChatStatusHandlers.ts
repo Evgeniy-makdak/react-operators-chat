@@ -274,7 +274,10 @@ export const useChatStatusHandlers = (refs: ChatRefs, deps: StatusHandlersDeps) 
         if (
           message.messageStatus === 'TO_OPERATOR' &&
           message.uuid &&
-          message.confirmStatus === 'SENT' && // Проверяем реальный статус
+          (message.confirmStatus === 'SENT' || message.confirmStatus === 'DELIVERED') &&
+          message.confirmStatus !== 'READ' &&
+          !message.is_read &&
+          !deliveredConfirmedByBackendRef.current.has(message.uuid) &&
           !statusSendingInProgressRef.current.has(sendKey)
         ) {
           statusSendingInProgressRef.current.add(sendKey);
@@ -371,7 +374,8 @@ export const useChatStatusHandlers = (refs: ChatRefs, deps: StatusHandlersDeps) 
       }
 
       const message = session.messages.find(
-        (msg: any) => msg.id === messageId || msg.uuid === messageId,
+        (msg: any) =>
+          String(msg.id) === String(messageId) || String(msg.uuid) === String(messageId),
       );
       if (message) {
         sendReadStatusForMessage(sessionId, message);
